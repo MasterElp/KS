@@ -1,0 +1,66 @@
+&ACCESS RVP
+&REL 3
+&PARAM DISKPATH = KRC:\R1\Program
+DEF art_main ()
+  ;FOLD INI;%{PE}
+  ;FOLD BASISTECH INI
+    GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+    INTERRUPT ON 3 
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+  ;ENDFOLD (INI)
+   ART_air_init()
+   ARTBarrierInit()
+   ARTControlInitialize()
+   ARTDispenserInit()
+   ARTGripForkInit()
+   ARTGripVacuumInit()
+   ART_line_init()
+   ARTConveyorsInitialize()
+   ARTPickPointInitialize()
+   ARTStackInit()
+   ARTStatInitialize()
+   ART_PP_Initialize()
+   ARTWrapperInit()
+   $PAL_MODE = TRUE
+
+   MOVE_HOME()
+      
+   ; CURRENT_BAG !!!!
+   ART_line[1].current_bag = 0
+   ART_line[2].current_bag = 0
+      
+   LOOP
+      SWITCH ARTControlMotionCmd
+         ; Stop motion.
+         CASE #ARTMotionNone        
+            ARTControlStopMotion()
+         ; Go home motion.   
+         CASE #ARTMotionGoHome
+            MOVE_HOME()
+            WAIT FOR TRUE
+            ARTControlMotionCmd = #ARTMotionNone
+         ; Go servise motion.  
+         CASE #ARTMotionGoService
+            MOVE_HOME()
+            MOVE_SERVICE()
+            WAIT FOR TRUE
+            ARTControlStopMotion()
+            ARTControlMotionCmd = #ARTMotionGoHome
+         ; After completing main cycle go home.  
+         CASE #ARTMotionEndCycle
+            WAIT FOR TRUE
+            ARTControlMotionCmd = #ARTMotionGoHome
+         ; Main cycle motion.   
+         CASE #ARTMotionMainCycle
+            art_cycle()
+         DEFAULT
+            ; continue
+      ENDSWITCH   
+   ENDLOOP
+
+END

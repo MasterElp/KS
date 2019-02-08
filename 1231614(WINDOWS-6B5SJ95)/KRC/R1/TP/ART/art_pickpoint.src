@@ -1,0 +1,176 @@
+&ACCESS RVO2
+&REL 35
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_pickpoint ( )
+   ARTPickPointInitialize()
+END
+; 
+; Pick point init.
+;
+GLOBAL DEF ARTPickPointInitialize()
+   DECL INT line_num
+
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      IF ART_pick_point[line_num].ready1 AND ART_pick_point[line_num].ready2 THEN
+         ART_pick_point[line_num].state = #PP_READY
+      ELSE
+         ART_pick_point[line_num].state = #PP_FREE
+      ENDIF
+      ART_pick_point[line_num].stop_state = FALSE
+      ART_pick_point[line_num].error_state = #NORMAL
+      ART_pick_point[line_num].firstPassedTime = 0
+      ART_pick_point[line_num].first_passed = FALSE
+      ART_pick_point[line_num].second_passed = FALSE
+      ;ART_pick_point[line_num].lastNum = PP_LAST_CONV
+      ARTHMIClearMessage(ART_pick_point[line_num].m_inside_error)
+   ENDFOR
+END
+;
+;
+;
+GLOBAL DEF ARTBagGripped(line_num :IN)
+   DECL INT line_num
+   IF (ART_pick_point[line_num].state == #PP_READY) THEN
+      ART_pick_point[line_num].state = #PP_FREE
+      ART_line_pp_not_ready(line_num)
+      ART_pick_point[line_num].doRequest = TRUE
+   ENDIF
+END
+; 
+; Pick point SPS.
+;
+GLOBAL DEF ARTPickPointDoSPS()
+   DECL INT line_num
+   ;diPickPointBagReady = $MEAS_PULSE[5]
+   ART_pick_point[1].in_sensor = diPickPoint1In
+   ART_pick_point[2].in_sensor = diPickPoint2In
+   ART_pick_point[1].ready1 = diPickPoint1Ready1
+   ART_pick_point[2].ready1 = diPickPoint2Ready1
+   ART_pick_point[1].ready2 = diPickPoint1Ready2
+   ART_pick_point[2].ready2 = diPickPoint2Ready2
+   ART_pick_point[1].diErrorUn = diPickPoint1ErrorUn
+   ART_pick_point[2].diErrorUn = diPickPoint2ErrorUn
+   doPickPoint1Run = ART_pick_point[1].doRun
+   doPickPoint2Run = ART_pick_point[2].doRun
+   doPickPoint1Request = ART_pick_point[1].doRequest
+   doPickPoint2Request = ART_pick_point[2].doRequest
+   ;ART_pick_point[line_num].doReset = diPickPointReset
+      
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      ART_HMI_Button_Pulse(ART_pick_point[line_num].doResetHMI, ART_pick_point[line_num].doReset)
+      ;
+      ; Reset state
+      ;
+      IF ARTHMIIsResetPushed() OR ART_pick_point[line_num].doReset THEN
+         ARTHMIClearMessage(ART_pick_point[line_num].m_inside_error)
+         ART_pick_point[line_num].error_state = #NORMAL
+      ENDIF 
+      IF ART_pick_point[line_num].doReset THEN
+         ART_pick_point[line_num].state = #PP_FREE
+      ENDIF
+      ;
+      IF ARTHMIIsStartPushed() THEN
+         ;ARTPickPointStopped = FALSE
+      ENDIF
+   
+      ; Bag in PickPoint ready to grip
+      ;IF (ART_pick_point[line_num].ready1 AND ART_pick_point[line_num].ready2) AND NOT (ART_pick_point[line_num].state == #PP_READY) THEN
+      IF (ART_pick_point[line_num].ready1 OR ART_pick_point[line_num].ready2) AND NOT (ART_pick_point[line_num].state == #PP_READY) THEN
+         IF ART_pick_point[line_num].ready_pause_timer==0 THEN
+            ART_pick_point[line_num].ready_pause_timer = ARTTimerGetTime()
+         ELSE
+            IF ARTTimerIsTimePassed(ART_pick_point[line_num].ready_pause_timer, READY_PAUSE_TIME) THEN
+               ART_pick_point[line_num].state = #PP_READY   
+               ART_pick_point[line_num].ready_pause_timer = 0 
+               ART_pick_point[line_num].first_passed = FALSE
+               ART_pick_point[line_num].second_passed = FALSE               
+            ENDIF
+         ENDIF
+      ELSE
+         ART_pick_point[line_num].ready_pause_timer = 0         
+      ENDIF
+     
+      ; PickPoint run when in-sensor has product
+      IF (ART_pick_point[line_num].state == #PP_FREE) AND ART_pick_point[line_num].in_sensor THEN
+         ART_pick_point[line_num].state = #PP_RUN
+         ;ART_pick_point[line_num].doRequest = FALSE
+      ENDIF
+      ;
+      ; First product in pick point IN
+      ;
+      IF (ART_pick_point[line_num].state == #PP_RUN) AND NOT ART_pick_point[line_num].first_passed AND NOT ART_pick_point[line_num].second_passed THEN
+         IF ART_pick_point[line_num].ready2 THEN
+            ART_pick_point[line_num].state = #PP_STOP
+            ART_pick_point[line_num].first_passed = TRUE
+         ENDIF
+      ENDIF
+      ;
+      ; Second product in pick point IN
+      ;  
+      IF ART_pick_point[line_num].first_passed AND ART_pick_point[line_num].in_sensor THEN
+         ART_pick_point[line_num].doRequest = FALSE
+         IF (ART_pick_point[line_num].firstPassedTime == 0) THEN
+            ART_pick_point[line_num].firstPassedTime = ARTTimerGetTime()
+         ENDIF
+      ENDIF
+      IF ARTTimerIsTimePassed(ART_pick_point[line_num].firstPassedTime, DEF_FIRST_PASSED_TIME) THEN
+         ART_pick_point[line_num].state = #PP_RUN
+         ART_pick_point[line_num].second_passed = TRUE
+         ART_pick_point[line_num].firstPassedTime = 0
+      ENDIF
+      ;
+      ; Both products in pick point
+      ;
+      IF ART_pick_point[line_num].first_passed AND ART_pick_point[line_num].second_passed THEN
+         IF NOT ART_pick_point[line_num].in_sensor AND (ART_pick_point[line_num].state == #PP_RUN) THEN
+            ART_pick_point[line_num].state = #PP_BUSY
+         ENDIF         
+      ENDIF
+      ; Product ready to grip
+      IF (ART_pick_point[line_num].state == #PP_READY) THEN
+         ART_line_pp_ready(line_num)
+         ; Product gripped in robot motion procedure
+         ;IF (NOT ART_pick_point[line_num].ready1) AND (NOT ART_pick_point[line_num].ready2) THEN 
+         ;   ART_pick_point[line_num].state = #PP_FREE
+         ;   ART_line_pp_not_ready(line_num)
+         ;ENDIF
+      ENDIF
+         
+      ; Pick point inside error
+      IF (ART_pick_point[line_num].diErrorUn == TRUE) THEN
+         ARTHMISetMessage(ART_pick_point[line_num].m_inside_error, TRUE, "ARTChain", "PP_FC_ERROR")
+         ART_pick_point[line_num].error_state = #ERROR
+      ENDIF
+      
+      IF (ARTSystemState == #ARTSYS_STATE_CRITICAL) OR (ART_pick_point[line_num].error_state == #ERROR) THEN ;  OR (ARTSystemState == #ARTSYS_STATE_ERROR)
+         ART_pick_point[line_num].stop_state = TRUE
+      ENDIF
+      ;
+      ; Motion control
+      ;
+      IF (ART_pick_point[line_num].state == #PP_READY) OR (ART_pick_point[line_num].state == #PP_STOP) OR (ART_pick_point[line_num].state == #PP_FREE) THEN
+         ART_pick_point[line_num].doRun = FALSE
+      ENDIF
+      
+      IF (ART_pick_point[line_num].state == #PP_RUN) OR (ART_pick_point[line_num].state == #PP_BUSY) THEN
+         ART_pick_point[line_num].doResetL = ARTHMIBlinkShort
+         IF (ART_pick_point[line_num].stop_state == TRUE)  THEN
+            ART_pick_point[line_num].doRun = FALSE
+         ELSE
+            ART_pick_point[line_num].doRun = TRUE
+         ENDIF
+      ELSE
+        ART_pick_point[line_num].doResetL = FALSE
+      ENDIF
+         
+      ;IF ART_pick_point[line_num].in_sensor THEN
+      ;   ART_pick_point[line_num].passed = TRUE
+      ;ENDIF 
+      ;IF ART_pick_point[line_num].passed AND NOT ART_pick_point[line_num].in_sensor THEN
+      ;   ART_pick_point[line_num].state = #PP_BUSY
+      ;   ART_pick_point[line_num].passed = FALSE
+      ;ENDIF
+   ENDFOR
+END

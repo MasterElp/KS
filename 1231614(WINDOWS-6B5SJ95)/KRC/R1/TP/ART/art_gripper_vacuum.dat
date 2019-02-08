@@ -1,0 +1,25 @@
+&ACCESS RVO2
+&REL 162
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_gripper_vacuum PUBLIC
+;GLOBAL ENUM ART_GRIPPER_STATES GRP_READY,GRP_HOLDING,GRP_FREE,GRP_ERROR
+
+;DECL GLOBAL ART_DEVICE_STATE ARTGripVacState=#NORMAL
+DECL BOOL ARTGripperIsMonitor=FALSE
+DECL BOOL ARTGripper_suckers_on=FALSE
+
+; Errors handlers.
+DECL INT GRIP_m_check_ready=0
+DECL INT GRIP_m_format_error=0
+DECL INT GRIP_m_grip_timeout=0
+DECL INT GRIP_m_release_timeout=0
+DECL INT GRIP_m_product_out=0
+DECL INT GRIP_m_collision=0
+
+; Timeout timer.
+DECL INT DEF_GRIPPER_TIMEOUT=40000
+DECL INT ARTGripWaitTimer=0
+
+ENDDAT

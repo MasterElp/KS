@@ -1,0 +1,60 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_wrapper( )
+END 
+; **** SET GRIPPER TO THE INITIAL STATE 
+;
+;
+GLOBAL DEF ARTWrapperInit()
+   ART_wrapper[1].do_in_request = FALSE
+END
+;
+;
+;
+GLOBAL DEF ARTWrapperRequest()
+   ART_wrapper[1].do_in_request = TRUE
+END
+;
+;
+;
+GLOBAL DEF ARTWrapperConfirm()
+   ART_wrapper[1].do_out_confirm = TRUE
+END
+;
+;
+;
+GLOBAL DEF ARTWrapperDoSPS()
+   ; var binding
+   doWrapperInRequest = ART_wrapper[1].do_in_request
+   doWrapperOutConfirm = ART_wrapper[1].do_out_confirm
+   doWrapperOutPermit = ART_wrapper[1].do_out_permit
+   
+   ART_wrapper[1].in_complete = diWrapperInComplete
+   ART_wrapper[1].in_sensor = diConveyor3Out
+   ART_wrapper[1].out_sensor = diConveyor4Out
+   ART_wrapper[1].overflow_if = (ART_pal_conveyors[4].state == #CONV_OVERFLOW)
+   
+   
+   IF (ART_place_point[1,1].state == #WA_OUT) OR (ART_place_point[2,1].state == #WA_OUT) THEN
+      IF ART_wrapper[1].in_sensor THEN
+         ART_wrapper[1].do_in_request = TRUE
+      ENDIF
+      IF ART_wrapper[1].in_complete THEN;ART_pal_conveyors[3].object_out AND NOT ART_pal_conveyors[3].out_sensor AND
+         ART_wrapper[1].do_in_request = FALSE
+      ENDIF
+   ENDIF
+   
+   IF diWrapperOutRequest THEN
+      IF ART_wrapper[1].overflow_if THEN
+         ART_wrapper[1].do_out_permit = FALSE
+      ELSE
+         ART_wrapper[1].do_out_permit = TRUE
+      ENDIF
+   ELSE
+      ART_wrapper[1].do_out_permit = FALSE
+      ART_wrapper[1].do_out_confirm = FALSE
+   ENDIF
+END

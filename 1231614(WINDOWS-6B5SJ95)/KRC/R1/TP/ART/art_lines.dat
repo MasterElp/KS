@@ -1,0 +1,18 @@
+&ACCESS RV2
+&REL 173
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_lines PUBLIC
+   GLOBAL STRUC CHAINS INT scheme_number,INT curLayer,INT current_bag,BOOL isLayerDone,BOOL isPalletDone,BOOL is50PercentDone,INT MAX_BAG_COUNT,INT MAX_LAYER_COUNT,INT BAG_HEIGHT,INT useWorkArea,INT new_scheme,BOOL scheme_change
+   DECL GLOBAL CHAINS ART_line[2]
+   ART_line[1]={scheme_number 1,curLayer 3,current_bag 0,isLayerDone FALSE,isPalletDone FALSE,is50PercentDone FALSE,MAX_BAG_COUNT 4,MAX_LAYER_COUNT 3,BAG_HEIGHT 360,useWorkArea 1,new_scheme 1,scheme_change FALSE}
+   ART_line[2]={scheme_number 2,curLayer 2,current_bag 0,isLayerDone FALSE,isPalletDone FALSE,is50PercentDone FALSE,MAX_BAG_COUNT 5,MAX_LAYER_COUNT 3,BAG_HEIGHT 240,useWorkArea 1,new_scheme 2,scheme_change FALSE}
+   DECL GLOBAL INT DEF_LINE_COUNT=2
+   DECL GLOBAL INT ART_line_last_num=1
+   
+   DECL INT scheme_wait_time=644970056
+   DECL GLOBAL INT m_n_chain_scheme=0
+   DECL GLOBAL INT SCHEME_5_LITR=1
+   DECL GLOBAL INT SCHEME_10_LITR=2
+   DECL INT LINES_NOT_READY=-1
+   DECL GLOBAL INT ART_line_next=1
+ENDDAT

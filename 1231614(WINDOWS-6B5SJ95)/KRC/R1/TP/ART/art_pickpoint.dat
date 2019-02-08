@@ -1,0 +1,16 @@
+&ACCESS RVO2
+&REL 35
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_pickpoint PUBLIC
+GLOBAL ENUM ART_PICKPOINT_STATES PP_READY,PP_RUN,PP_STOP,PP_BUSY,DEBUG,PP_FREE
+
+GLOBAL STRUC PICK_POINT BOOL stop_state,ART_DEVICE_STATE error_state,BOOL doRun,BOOL doRequest,BOOL doReset,BOOL doResetHMI,BOOL doResetL,BOOL in_sensor,BOOL ready1,BOOL ready2,BOOL diErrorUn,BOOL overflow_if,BOOL run_if,ART_PICKPOINT_STATES state,INT ready_pause_timer,INT firstPassedTime,INT PASS_TIME,INT m_inside_error,BOOL first_passed,BOOL second_passed
+DECL GLOBAL PICK_POINT ART_pick_point[2]
+ART_pick_point[1]={stop_state TRUE,error_state #NORMAL,doRun FALSE,doRequest FALSE,doReset FALSE,doResetHMI FALSE,doResetL TRUE,in_sensor FALSE,ready1 FALSE,ready2 TRUE,diErrorUn FALSE,overflow_if FALSE,run_if FALSE,state #PP_BUSY,ready_pause_timer 0,firstPassedTime 0,PASS_TIME 30000,m_inside_error 10002,first_passed TRUE,second_passed TRUE}
+ART_pick_point[2]={stop_state TRUE,error_state #NORMAL,doRun FALSE,doRequest FALSE,doReset FALSE,doResetHMI FALSE,doResetL FALSE,in_sensor FALSE,ready1 FALSE,ready2 TRUE,diErrorUn FALSE,overflow_if FALSE,run_if FALSE,state #PP_FREE,ready_pause_timer 0,firstPassedTime 0,PASS_TIME 30000,m_inside_error 10003,first_passed FALSE,second_passed FALSE}
+
+DECL INT DEF_FIRST_PASSED_TIME=500
+DECL INT READY_PAUSE_TIME=50
+ENDDAT

@@ -1,0 +1,10 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_barrier PUBLIC
+   GLOBAL STRUC BARRIER ART_DEVICE_STATE error_state, BOOL do_mute,BOOL is_pass,INT m_barrier_pass
+   DECL GLOBAL BARRIER ART_barrier[1]
+   ART_barrier[1] = {error_state #NORMAL,do_mute FALSE,is_pass FALSE,m_barrier_pass 0}
+ENDDAT

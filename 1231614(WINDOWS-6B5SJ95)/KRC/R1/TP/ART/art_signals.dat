@@ -1,0 +1,165 @@
+&ACCESS RV
+&REL 1
+DEFDAT art_signals PUBLIC
+   ;
+   ; Test.
+   ;
+   GLOBAL SIGNAL doTestGivePallet $OUT[50]
+   GLOBAL SIGNAL doTest_WA1_Full  $OUT[51]
+   GLOBAL SIGNAL doTest_WA2_Full  $OUT[52]
+   GLOBAL SIGNAL isMonitor $OUT[53]
+   ;
+   ; SAFETY CONTROLS.
+   ;
+   GLOBAL SIGNAL isAirPressureOKSignal $IN[202]
+   ;
+   ; USER CONTROL SIGNALS.
+   ;
+   GLOBAL SIGNAL doControlDrivesON $OUT[246]
+   GLOBAL SIGNAL doStopButtonLightSignal $OUT[235]
+   GLOBAL SIGNAL doResetButtonLightSignal $OUT[236]
+   GLOBAL SIGNAL doStartButtonLightSignal $OUT[237]
+   GLOBAL SIGNAL HMI_StopButtonPush $OUT[238]
+   GLOBAL SIGNAL HMI_ResetButtonPush $OUT[239]
+   GLOBAL SIGNAL HMI_StartButtonPush $OUT[240]   
+   GLOBAL SIGNAL doControlLRedSignal $OUT[241]
+   GLOBAL SIGNAL doControlLYellowSignal $OUT[242]
+   GLOBAL SIGNAL doControlLGreenSignal $OUT[243]
+   GLOBAL SIGNAL doControlLSoundSignal $OUT[244]
+   
+   GLOBAL SIGNAL isStopButtonPushed $IN[261]
+   GLOBAL SIGNAL isResetButtonPushed $IN[262]
+   GLOBAL SIGNAL isStartButtonPushed $IN[263]
+   ;
+   ; GRIPPER.
+   ;
+   ; True.
+   GLOBAL SIGNAL doGripSuckersOn $OUT[201]   
+   GLOBAL SIGNAL doGripOpenFork $OUT[202]
+   GLOBAL SIGNAL doGripCloseFork $OUT[203]
+   GLOBAL SIGNAL doGripSupport1Down $OUT[204]
+   GLOBAL SIGNAL doGripSupport2Down $OUT[205]
+   
+   GLOBAL SIGNAL isGripVacuumOK $IN[201]
+   GLOBAL SIGNAL isGripSupport1Up $IN[203]
+   GLOBAL SIGNAL isGripSupport1Down $IN[204]
+   GLOBAL SIGNAL isGripSupport2Up $IN[205]
+   GLOBAL SIGNAL isGripSupport2Down $IN[206]
+   GLOBAL SIGNAL isGripperForkOpen $IN[207]
+   GLOBAL SIGNAL isGripperForkClose $IN[208]
+   ; 
+   ; PICKPOINT.
+   ; 
+   ; True.
+   GLOBAL SIGNAL doPickPoint1Run $OUT[207]
+   GLOBAL SIGNAL doPickPoint1Request $OUT[206]
+   GLOBAL SIGNAL doPickPoint2Run $OUT[209]
+   GLOBAL SIGNAL doPickPoint2Request $OUT[208]
+   
+   GLOBAL SIGNAL diPickPoint1ErrorUn $IN[209]
+   GLOBAL SIGNAL diPickPoint1Ready1 $IN[210]
+   GLOBAL SIGNAL diPickPoint1Ready2 $IN[211]
+   GLOBAL SIGNAL diPickPoint1In $IN[212]
+   GLOBAL SIGNAL diPickPoint2ErrorUn $IN[213]
+   GLOBAL SIGNAL diPickPoint2Ready1 $IN[214]
+   GLOBAL SIGNAL diPickPoint2Ready2 $IN[215]
+   GLOBAL SIGNAL diPickPoint2In $IN[216]
+   ; Test.
+   ;
+   ; CONVEYOR.
+   ;
+   GLOBAL SIGNAL doConveyor1Run $OUT[210]  
+   GLOBAL SIGNAL doConveyor2Run $OUT[213]
+   GLOBAL SIGNAL doConveyor2Reverse $OUT[214]
+   GLOBAL SIGNAL doConveyor6Run $OUT[215]
+   GLOBAL SIGNAL doConveyor6Reverse $OUT[216]
+   GLOBAL SIGNAL doConveyor6Up $OUT[217]
+   GLOBAL SIGNAL doConveyor6Down $OUT[247]
+   GLOBAL SIGNAL doConveyor3Run $OUT[220]
+   GLOBAL SIGNAL doConveyor3Reverse $OUT[221]
+   GLOBAL SIGNAL doConveyor7Run $OUT[222]
+   GLOBAL SIGNAL doConveyor7Reverse $OUT[223]
+   GLOBAL SIGNAL doConveyor7Up $OUT[224]
+   GLOBAL SIGNAL doConveyor7Down $OUT[248]
+   GLOBAL SIGNAL doConveyor4Run $OUT[231]
+   GLOBAL SIGNAL doConveyor5Run $OUT[232]
+
+   GLOBAL SIGNAL diConveyor1Error $IN[217]
+   ;GLOBAL SIGNAL diConveyor1In $IN[218]
+   GLOBAL SIGNAL diConveyor1Out $IN[219]
+   GLOBAL SIGNAL diConveyor2Error $IN[225]
+   GLOBAL SIGNAL diConveyor2In $IN[226]
+   GLOBAL SIGNAL diConveyor2Out $IN[227]
+   GLOBAL SIGNAL diConveyor6Error $IN[228]
+   ;GLOBAL SIGNAL diConveyor6Out $IN[229]
+   GLOBAL SIGNAL diConveyor6Bottom $IN[230]
+   GLOBAL SIGNAL diConveyor6Top $IN[231]
+   GLOBAL SIGNAL diConveyor3Error $IN[235]
+   GLOBAL SIGNAL diConveyor3In $IN[236]
+   GLOBAL SIGNAL diConveyor3Out $IN[237]
+   ;GLOBAL SIGNAL diConveyor3Res $IN[238]
+   GLOBAL SIGNAL diConveyor7Error $IN[239]
+   ;GLOBAL SIGNAL diConveyor7Out $IN[240]
+   GLOBAL SIGNAL diConveyor7Bottom $IN[241]
+   GLOBAL SIGNAL diConveyor7Top $IN[242]
+   GLOBAL SIGNAL diConveyor4Error $IN[252]
+   ;GLOBAL SIGNAL diConveyor4In $IN[253]
+   GLOBAL SIGNAL diConveyor4Out $IN[254]
+   ;GLOBAL SIGNAL diConveyor4Res $IN[255]
+   GLOBAL SIGNAL diConveyor5Error $IN[256]
+   GLOBAL SIGNAL diConveyor5Out $IN[257]
+   ;GLOBAL SIGNAL diConveyor5Res $IN[258]
+   ;
+   ; Place point.
+   ;
+   GLOBAL SIGNAL doConveyor8Run $OUT[218]
+   GLOBAL SIGNAL doConveyor8Reverse $OUT[219]
+   GLOBAL SIGNAL doConveyor9Run $OUT[225]
+   GLOBAL SIGNAL doConveyor9Reverse $OUT[226]
+   
+   GLOBAL SIGNAL diConveyor8Error $IN[232]
+   ;GLOBAL SIGNAL diConveyor8In $IN[233]
+   GLOBAL SIGNAL diConveyor8Out $IN[234]
+   GLOBAL SIGNAL diConveyor9Error $IN[243]
+   ;GLOBAL SIGNAL diConveyor9In $IN[244]
+   GLOBAL SIGNAL diConveyor9Out $IN[245]
+   ;
+   ; Barrier.
+   ;
+   GLOBAL SIGNAL doBarrierMute $OUT[245]
+   GLOBAL SIGNAL diBarrierPass $IN[264]
+   ;
+   ; Pallet dispenser.
+   ;
+   GLOBAL SIGNAL doDispenserRequest $OUT[211]
+   GLOBAL SIGNAL doDispenserTaken $OUT[212]
+   
+   GLOBAL SIGNAL diDispenserReady $IN[220]
+   GLOBAL SIGNAL diDispenserReadyTake $IN[221]
+   ;GLOBAL SIGNAL diDispenserRetired $IN[222]
+   GLOBAL SIGNAL diDispenserAlarm $IN[223]
+   GLOBAL SIGNAL diDispenserLow $IN[224]
+   ;
+   ; Pallet wrapper.
+   ;
+   GLOBAL SIGNAL doWrapperInRequest $OUT[227]
+   GLOBAL SIGNAL doWrapperOutPermit $OUT[228]
+   GLOBAL SIGNAL doWrapperOutConfirm $OUT[229]
+   ;GLOBAL SIGNAL doWrapper4 $OUT[230]
+   
+   GLOBAL SIGNAL diWrapperInPermit $IN[246]
+   GLOBAL SIGNAL diWrapperInComplete $IN[247]
+   GLOBAL SIGNAL diWrapperOutRequest $IN[248]
+   ;GLOBAL SIGNAL diWrapper4 $IN[249]
+   ;GLOBAL SIGNAL diWrapper5 $IN[250]
+   ;GLOBAL SIGNAL diWrapper6 $IN[251]
+   ;
+   ; Sheets stack.
+   ;
+   GLOBAL SIGNAL doStack1Mute $OUT[233]
+   GLOBAL SIGNAL doStack2Mute $OUT[234]
+   
+   GLOBAL SIGNAL diStack1Empty $IN[259]
+   GLOBAL SIGNAL diStack2Empty $IN[260]
+   
+ENDDAT

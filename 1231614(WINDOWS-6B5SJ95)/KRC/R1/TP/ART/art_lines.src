@@ -1,0 +1,144 @@
+&ACCESS RV2
+&REL 173
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_lines ( )
+   
+END
+;
+; Init.
+;
+GLOBAL DEF ART_line_init()
+   DECL INT line_num
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      ART_line[line_num].isPalletDone = FALSE
+      ART_line[line_num].is50PercentDone = FALSE
+      ART_line[line_num].current_bag = 0
+      ART_line[line_num].useWorkArea = 0
+   ENDFOR
+   ARTHMIClearMessage(m_n_chain_scheme)
+END
+;
+; Line select (main program)
+;
+GLOBAL DEFFCT INT ART_line_Select()
+   DECL INT line_num
+   IF (ART_line_next > 0) THEN
+      IF (ART_pick_point[ART_line_next].state == #PP_READY) AND (ART_line[ART_line_next].useWorkArea > 0) THEN
+         line_num = ART_line_next
+         ART_line_next = 0
+         RETURN line_num
+      ENDIF
+   ENDIF
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      IF (ART_pick_point[line_num].state == #PP_READY) AND (ART_line[line_num].useWorkArea > 0) THEN
+         ART_line_next = 0
+         RETURN line_num
+      ENDIF
+   ENDFOR
+   RETURN LINES_NOT_READY
+ENDFCT
+;
+; If PP ready (SPS) and next line dont determinated, remember next line
+;
+GLOBAL DEF ART_line_pp_ready(line_num : IN)
+   DECL INT line_num
+   IF (ART_line_next == 0) THEN
+      ART_line_next = line_num
+   ENDIF
+END
+;
+; If PP dont ready (SPS)
+;
+GLOBAL DEF ART_line_pp_not_ready(line_num : IN)
+   DECL INT line_num
+   IF (ART_line_next == line_num) THEN
+      ART_line_next = 0
+   ENDIF
+END
+;
+; Whait chk scheme number when grip(SPS).
+;
+GLOBAL DEF ART_line_scheme_wait(line_num: IN)
+   DECL INT line_num
+   SWITCH ART_line[line_num].scheme_number
+      CASE SCHEME_5_LITR
+         REPEAT
+            IF (scheme_wait_time == 0) THEN
+               scheme_wait_time = ARTTimerGetTime()
+            ELSE
+               IF ARTTimerIsTimePassed(scheme_wait_time, 5000) THEN
+                  ARTHMISetMessage(m_n_chain_scheme, TRUE, "ARTChain", "CHAIN_Wrong_scheme")
+                  scheme_wait_time = 0
+               ENDIF
+            ENDIF
+            IF ARTHMIIsResetPushed() THEN
+               EXIT
+            ENDIF
+         UNTIL FALSE;ARTGripperMid_1_pass
+      CASE SCHEME_10_LITR
+         REPEAT
+            IF (scheme_wait_time == 0) THEN
+               scheme_wait_time = ARTTimerGetTime()
+            ELSE
+               IF ARTTimerIsTimePassed(scheme_wait_time, 5000) THEN
+                  ARTHMISetMessage(m_n_chain_scheme, TRUE, "ARTChain", "CHAIN_Wrong_scheme")
+                  scheme_wait_time = 0
+               ENDIF
+            ENDIF  
+            IF ARTHMIIsResetPushed() THEN
+               EXIT
+            ENDIF
+         UNTIL FALSE;ARTGripperMid_2_pass
+      DEFAULT
+         ARTHMISetMessage(m_n_chain_scheme, TRUE, "ARTChain", "CHAIN_Wrong_scheme")
+         WAIT FOR TRUE
+         ARTControlMotionCmd = #ARTMotionGoHome
+   ENDSWITCH
+END
+;
+; Scheme number read
+;
+GLOBAL DEF ART_line_new_scheme(line_num: IN)
+   DECL INT line_num
+   ART_line[line_num].scheme_number = ART_line[line_num].new_scheme
+   
+   SWITCH ART_line[line_num].scheme_number
+      CASE SCHEME_5_LITR
+         ART_line[line_num].MAX_BAG_COUNT = 4
+         ART_line[line_num].BAG_HEIGHT = 360
+         ART_line[line_num].MAX_LAYER_COUNT = 3
+      CASE SCHEME_10_LITR
+         ART_line[line_num].MAX_BAG_COUNT = 5
+         ART_line[line_num].BAG_HEIGHT = 240
+         ART_line[line_num].MAX_LAYER_COUNT = 3
+   ENDSWITCH
+END
+;
+; Calculate next bag.
+;
+GLOBAL DEF ART_line_calc_next(line_num : IN)
+   DECL INT line_num
+   ART_line[line_num].curLayer = (ART_line[line_num].current_bag / ART_line[line_num].MAX_BAG_COUNT) + 1
+   ART_line[line_num].current_bag = ART_line[line_num].current_bag + 1
+   
+   IF (ART_line[line_num].current_bag - ART_line[line_num].MAX_BAG_COUNT) == 0 THEN
+      ART_line[line_num].isLayerDone = TRUE
+   ELSE
+      ART_line[line_num].isLayerDone = FALSE
+   ENDIF
+
+   IF ART_line[line_num].current_bag >= ART_line[line_num].MAX_LAYER_COUNT*ART_line[line_num].MAX_BAG_COUNT THEN
+      ART_line[line_num].isPalletDone = TRUE
+   ENDIF
+   IF ART_line[line_num].curLayer > ART_line[line_num].MAX_LAYER_COUNT / 2 THEN
+      ART_line[line_num].is50PercentDone = TRUE
+   ENDIF
+END
+;
+; Line SPS.
+;
+GLOBAL DEF ART_line_DoSPS()
+   IF ARTHMIIsResetPushed() THEN
+       ARTHMIClearMessage(m_n_chain_scheme)
+   ENDIF
+END            

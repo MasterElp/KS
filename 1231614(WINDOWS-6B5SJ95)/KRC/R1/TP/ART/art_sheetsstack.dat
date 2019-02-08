@@ -1,0 +1,7 @@
+﻿DEFDAT art_sheetsstack PUBLIC
+   GLOBAL STRUC STACK ART_DEVICE_STATE error_state,BOOL is_empty,BOOL is_low_level,BOOL do_mute,INT m_stack_empty,INT m_low_level
+   DECL GLOBAL STACK ART_stack[2]
+   ART_stack[1] = {error_state #NORMAL,is_empty FALSE,is_low_level FALSE,do_mute FALSE,m_stack_empty 0,m_low_level 0}
+   ART_stack[2] = {error_state #NORMAL,is_empty FALSE,is_low_level FALSE,do_mute FALSE,m_stack_empty 0,m_low_level 0}
+   DECL INT STACK_COUNT = 2
+ENDDAT

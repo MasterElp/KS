@@ -1,0 +1,25 @@
+&ACCESS RV2
+DEF art_air ( )
+
+END
+; Init air.
+GLOBAL DEF ART_air_init ( )
+   low_air_signal_timer = 0
+END
+;
+; Air SPS
+;
+GLOBAL DEF ART_air_SPS()
+   IF (NOT isAirPressureOKSignal) THEN
+      IF low_air_signal_timer <= 0 THEN
+         low_air_signal_timer = ARTTimerGetTime()
+      ENDIF
+      
+      IF ARTTimerIsTimePassed(low_air_signal_timer, AIR_SIGNAL_OUT_TIME) THEN
+         ART_Air_low_preassure = TRUE
+      ENDIF
+   ELSE
+      ART_Air_low_preassure = FALSE
+      low_air_signal_timer = 0
+   ENDIF  
+END

@@ -1,0 +1,47 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_barrier( )
+END 
+; **** SET GRIPPER TO THE INITIAL STATE 
+;
+;
+GLOBAL DEF ARTBarrierInit()
+   ART_barrier[1].error_state = #NORMAL
+   ARTHMIClearMessage(ART_barrier[1].m_barrier_pass)
+END
+;
+;
+;
+GLOBAL DEF ARTBarrierMute()
+   ART_barrier[1].do_mute = TRUE
+END
+;
+;
+;
+GLOBAL DEF ARTBarrierUnMute()
+   ART_barrier[1].do_mute = FALSE
+END
+;
+;
+;
+GLOBAL DEF ARTBarrierDoSPS()
+   ; var binding
+   doBarrierMute = ART_barrier[1].do_mute
+   ART_barrier[1].is_pass = diBarrierPass
+   
+   IF ARTHMIIsResetPushed() THEN
+      ART_barrier[1].error_state = #NORMAL
+      ARTHMIClearMessage(ART_barrier[1].m_barrier_pass)
+   ENDIF
+
+   IF (ART_barrier[1].do_mute == FALSE) THEN
+      IF (ART_barrier[1].is_pass == TRUE) THEN
+         ARTHMISetMessage(ART_barrier[1].m_barrier_pass,TRUE,"ARTBarrier", "BARRIER_PASS")
+         ARTSystemSetState(#ARTSYS_STATE_CRITICAL)
+         ART_barrier[1].error_state = #ERROR
+      ENDIF
+   ENDIF
+END

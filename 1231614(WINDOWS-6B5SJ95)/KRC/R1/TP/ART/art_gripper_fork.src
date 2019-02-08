@@ -1,0 +1,307 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_gripper_fork( )
+END 
+; **** SET GRIPPER TO THE INITIAL STATE 
+;
+;
+GLOBAL DEF ARTGripForkInit()
+   doGripOpenFork=FALSE
+   doGripCloseFork=TRUE
+   doGripSupport1Down=FALSE
+   doGripSupport2Down=FALSE
+   ARTGripState = #NORMAL
+   ; Timers.
+   ARTGripWaitTimer = 0
+   ARTSupWaitTimer = 0
+
+   ; Messages.
+   ARTHMIClearMessage(m_n_check_ready);m_n_check_ready = 0
+   ARTHMIClearMessage(m_n_format_error);m_n_format_error = 0
+   ARTHMIClearMessage(m_n_grip_timeout);m_n_grip_timeout = 0
+   ARTHMIClearMessage(m_fork_close_chk)
+   ARTHMIClearMessage(m_sup_close_timeout)
+   ARTHMIClearMessage(m_n_release_timeout);m_n_release_timeout = 0
+   ARTHMIClearMessage(m_sup_release_timeout)
+   ARTHMIClearMessage(m_sup_open_chk)
+   ARTHMIClearMessage(m_fork_open_chk)
+   ARTHMIClearMessage(m_n_bag_out);m_n_bag_out = 0
+   ARTHMIClearMessage(m_n_collision);m_n_collision = 0
+   ARTHMIClearMessage(m_n_wrong_scheme)
+   
+   fork_close_error = FALSE
+   support_up_error = FALSE
+   sup_grip_error = FALSE
+END
+; 
+; Grip bag.
+;
+GLOBAL DEF ARTGripperGrip()
+   CONTINUE
+   doGripSupport1Down = TRUE
+   doGripSupport2Down = TRUE
+END
+;
+; Release bag.
+;             
+GLOBAL DEF ARTGripRelease(scheme : IN)
+   DECL INT scheme
+   ARTSupportUp()
+   ARTForkOpen()
+END
+;
+; Release check.
+;             
+GLOBAL DEFFCT BOOL ARTGripReleaseChk()
+   ARTGripSupportUpWait()
+   ARTGripForkOpWait()
+   RETURN TRUE
+ENDFCT
+;
+; Fork open fuction for trigger in motion.
+;             
+GLOBAL DEF ARTForkOpen()
+   doGripCloseFork=FALSE
+   doGripOpenFork=TRUE
+   ;ARTGripForkState = #GRP_OPENING
+END
+;
+; Fork close fuction for trigger in motion.
+;             
+GLOBAL DEF ARTForkClose(scheme : IN)
+   DECL INT scheme
+   doGripOpenFork=FALSE
+   INTERRUPT DECL 22 WHEN $MEAS_PULSE[2]==TRUE DO ForkCloseInterrupt( )
+   INTERRUPT OFF 22
+   INTERRUPT DECL 23 WHEN $MEAS_PULSE[3]==TRUE DO ForkCloseInterrupt( )
+   INTERRUPT OFF 23
+   INTERRUPT DECL 24 WHEN $MEAS_PULSE[4]==TRUE DO ForkCloseInterrupt( )
+   INTERRUPT OFF 24
+   INTERRUPT DECL 25 WHEN $MEAS_PULSE[5]==TRUE DO ForkCloseInterrupt( )
+   INTERRUPT OFF 25
+   SWITCH scheme
+      CASE 2
+         INTERRUPT ON 22
+         INTERRUPT ON 23
+      CASE 1
+         INTERRUPT ON 24
+         INTERRUPT ON 25
+   ENDSWITCH
+   
+   doGripCloseFork = TRUE
+   WAIT FOR (doGripCloseFork == FALSE)
+END
+;
+;
+;
+DEF ForkCloseInterrupt()
+   doGripCloseFork = FALSE
+   INTERRUPT OFF 22
+   INTERRUPT OFF 23
+   INTERRUPT OFF 24
+   INTERRUPT OFF 25
+END
+;
+; Gripper forks close check.
+;
+GLOBAL DEF ARTGripForkClChk(scheme : IN)
+   DECL INT scheme
+   CONTINUE
+   IF NOT ARTisGripperClose(scheme) THEN
+      fork_close_error = TRUE
+   ELSE
+      fork_close_error = FALSE
+   ENDIF
+END
+;
+; Gripper support up check.
+;
+GLOBAL DEF ARTGripSupportUpChk()
+   CONTINUE
+   IF (NOT isGripSupport1Up OR isGripSupport1Down OR NOT isGripSupport2Up OR isGripSupport2Down) THEN
+      support_up_error = TRUE
+   ELSE
+      support_up_error = FALSE
+   ENDIF
+END
+;
+; Support open fuction for trigger in motion.
+;             
+GLOBAL DEF ARTSupportUp()
+   doGripSupport1Down = FALSE
+   doGripSupport2Down = FALSE
+END
+;
+; Gripper close check.
+;
+DEF ARTGripClWait()
+   ARTGripWaitTimer = ARTTimerGetTime()
+   REPEAT
+      IF ARTTimerIsTimePassed(ARTGripWaitTimer, DEF_GRIPPER_TIMEOUT) == TRUE THEN
+         ; Gripper open/close timeout. Please check or reset program.
+         ARTHMISetMessage(m_n_grip_timeout,TRUE,"ARTGripper", "FORK_GRIP_TIMEOUT")
+         ARTSystemSetState(#ARTSYS_STATE_ERROR)
+         ARTGripState = #ERROR
+         $FLAG[2] = TRUE
+      ENDIF
+   UNTIL ARTisGripperClose()
+   ARTGripWaitTimer = 0
+
+   ;ARTHMIClearMessage(m_n_grip_timeout)
+END
+;
+;
+;
+GLOBAL DEFFCT BOOL ARTisGripperClose(scheme : IN)
+   DECL INT scheme
+   SWITCH scheme
+      CASE 1
+         CONTINUE
+         RETURN ($MEAS_PULSE[2] == TRUE) OR ($MEAS_PULSE[3] == TRUE)
+      CASE 2
+         CONTINUE
+         RETURN ($MEAS_PULSE[4] == TRUE) OR ($MEAS_PULSE[5] == TRUE)
+   ENDSWITCH
+ENDFCT
+;
+; Gripper support down wait.
+;
+DEF ARTGripSupportDwWait()
+   ARTGripWaitTimer = ARTTimerGetTime()
+   REPEAT
+      IF ARTTimerIsTimePassed(ARTGripWaitTimer, DEF_GRIPPER_TIMEOUT) == TRUE THEN
+         ;ARTSysStateSetError("Gripper open/close timeout. Please check or reset program")
+         ARTHMISetMessage(m_sup_close_timeout,TRUE, "ARTGripper", "SUPPORT_GRIP_TIMEOUT")
+         ARTSystemSetState(#ARTSYS_STATE_ERROR)
+         ARTGripState = #ERROR
+      ENDIF
+   UNTIL ARTisSupportDown()
+   ARTGripWaitTimer = 0
+
+   ;ARTHMIClearMessage(m_sup_close_timeout)
+END
+;
+; Gripper support up wait.
+;
+GLOBAL DEF ARTGripSupportUpWait()
+   ARTSupWaitTimer = 0
+   WHILE ARTisSupportDown()
+      IF ARTSupWaitTimer == 0 THEN 
+         ARTSupWaitTimer = ARTTimerGetTime()
+      ELSE
+         IF ARTTimerIsTimePassed(ARTSupWaitTimer, DEF_GRIPPER_TIMEOUT) == TRUE THEN
+            ;ARTSysStateSetError("Gripper open/close timeout. Please check or reset program")
+            ARTHMISetMessage(m_sup_release_timeout,TRUE, "ARTGripper", "SUPPORT_OPEN_TIMEOUT")
+            ARTSystemSetState(#ARTSYS_STATE_ERROR)
+            ARTGripState = #ERROR
+         ENDIF
+      ENDIF
+   ENDWHILE  
+   ARTSupWaitTimer = 0
+      ;ARTHMIClearMessage(m_sup_release_timeout)
+END
+;
+;
+;
+GLOBAL DEFFCT BOOL ARTisSupportDown()
+   RETURN NOT isGripSupport1Up AND isGripSupport1Down AND NOT isGripSupport2Up AND isGripSupport2Down
+ENDFCT
+;
+;
+;
+GLOBAL DEFFCT BOOL ARTisGripperOpen()
+   RETURN isGripperForkOpen AND NOT isGripperForkClose
+ENDFCT
+;
+; Gripper forks open waiting.
+;
+GLOBAL DEF ARTGripForkOpWait()
+   ARTGripWaitTimer = 0
+   WHILE NOT ARTisGripperOpen()
+      IF ARTGripWaitTimer == 0 THEN 
+         ARTGripWaitTimer = ARTTimerGetTime()
+      ELSE
+         IF ARTTimerIsTimePassed(ARTGripWaitTimer, DEF_GRIPPER_TIMEOUT) == TRUE THEN
+            ;ARTSysStateSetError("Gripper open/close timeout. Please check or reset program")
+            ARTHMISetMessage(m_n_release_timeout,TRUE, "ARTGripper", "FORK_OPEN_TIMEOUT")
+            ARTSystemSetState(#ARTSYS_STATE_ERROR)
+            ARTGripState = #ERROR
+            ;$FLAG[3] = TRUE
+         ENDIF
+      ENDIF
+   ENDWHILE
+
+   ;ARTHMIClearMessage(m_n_release_timeout)
+END
+;
+; Gripper forks open check.
+;
+GLOBAL DEF ARTGripForkOpChk()
+   IF NOT ARTisGripperOpen() THEN
+      ARTHMISetMessage(m_fork_open_chk,TRUE, "ARTGripper", "FORK_OPEN_TIMEOUT")
+      ARTSystemSetState(#ARTSYS_STATE_ERROR)
+      ARTGripState = #ERROR
+   ;ELSE
+      ;ARTHMIClearMessage(m_fork_open_chk)
+   ENDIF
+END
+; **** Gripper SPS
+;
+;
+;
+GLOBAL DEF ARTGripperDoSPS()
+   ;
+   ; RESET button pressed
+   ;
+   IF ARTHMIIsResetPushed() THEN
+       ARTGripState = #NORMAL
+       ARTHMIClearMessage(m_n_collision)
+       ARTHMIClearMessage(m_n_bag_out)
+       ARTHMIClearMessage(m_n_check_ready)
+       ARTHMIClearMessage(m_n_release_timeout)
+       ARTHMIClearMessage(m_fork_open_chk)
+       ARTHMIClearMessage(m_sup_release_timeout)
+       ARTHMIClearMessage(m_sup_open_chk)
+       ARTHMIClearMessage(m_n_wrong_scheme)
+       ARTHMIClearMessage(m_fork_close_chk)
+       ARTHMIClearMessage(m_n_grip_timeout)
+       ARTHMIClearMessage(m_sup_close_timeout)
+       fork_close_error = FALSE
+       support_up_error = FALSE
+       sup_grip_error = FALSE
+   ENDIF
+   ;
+   ; Fork dont close error
+   ;   
+   IF (fork_close_error == TRUE) THEN
+      ARTHMISetMessage(m_fork_close_chk,TRUE,"ARTGripper", "FORK_CLOSE_CHK")
+      ARTSystemSetState(#ARTSYS_STATE_ERROR)
+      ARTGripState = #ERROR
+   ELSE
+      ARTHMIClearMessage(m_fork_close_chk)
+   ENDIF
+   ;
+   ; Support dont open error
+   ;  
+   IF (support_up_error == TRUE) THEN
+      ARTHMISetMessage(m_sup_open_chk,TRUE,"ARTGripper", "SUP_UP_CHK")
+      ARTGripState = #ERROR
+      ARTSystemSetState(#ARTSYS_STATE_ERROR)
+   ELSE  
+      ARTHMIClearMessage(m_sup_open_chk)
+   ENDIF
+   ;
+   ; Wrong scheme error
+   ;  
+   IF (sup_grip_error == TRUE) THEN
+      ARTHMISetMessage(m_n_wrong_scheme, TRUE, "ARTGripper", "GRIPPER_WRONG_SCHEME")
+      ARTSystemSetState(#ARTSYS_STATE_ERROR)
+      ARTGripState = #ERROR
+   ELSE
+      ARTHMIClearMessage(m_n_wrong_scheme)
+   ENDIF
+   
+END

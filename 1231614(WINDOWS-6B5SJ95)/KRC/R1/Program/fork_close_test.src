@@ -1,0 +1,36 @@
+&ACCESS RVO
+&REL 5
+&PARAM DISKPATH = Program/iPower
+DEF  fork_close_test ( )
+   ;FOLD INI;%{PE}
+      ;FOLD BASISTECH INI
+         GLOBAL INTERRUPT DECL 3 WHEN $STOPMESS==TRUE DO IR_STOPM ( )
+         INTERRUPT ON 3 
+         BAS (#INITMOV,0 )
+      ;ENDFOLD (BASISTECH INI)
+      ;FOLD USER INI
+         ;Make your modifications here
+         
+      ;ENDFOLD (USER INI)
+   ;ENDFOLD (INI)
+   $PAL_MODE = TRUE
+
+;FOLD PTP P2 Vel=100 % PDAT2 Tool[1] Base[0];%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P2, 3:, 5:100, 7:PDAT2
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT2
+FDAT_ACT=FP2
+BAS(#PTP_PARAMS,100)
+PTP XP2 
+;ENDFOLD
+   LOOP
+      ARTForkClose(1)
+      ;doGripCloseFork = FALSE
+      WAIT SEC 10
+      ARTForkClose(2)
+      ;doGripCloseFork = FALSE
+      WAIT SEC 10
+      ARTForkOpen()
+      WAIT SEC 10
+   ENDLOOP
+
+END

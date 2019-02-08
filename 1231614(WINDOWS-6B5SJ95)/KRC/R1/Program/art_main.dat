@@ -1,0 +1,7 @@
+&ACCESS RVP
+&REL 3
+&PARAM DISKPATH = KRC:\R1\Program
+DEFDAT  art_main PUBLIC
+
+DECL BASIS_SUGG_T LAST_BASIS={POINT1[] "P0                      ",POINT2[] "P0                      ",CP_PARAMS[] "CPDAT0                  ",PTP_PARAMS[] "PDAT0                   ",CONT[] "                        ",CP_VEL[] "2.0                     ",PTP_VEL[] " 100                    ",SYNC_PARAMS[] "SYNCDAT                 ",SPL_NAME[] "S0                      ",A_PARAMS[] "ADAT0                   "}
+ENDDAT

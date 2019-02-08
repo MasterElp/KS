@@ -1,0 +1,13 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_wrapper PUBLIC
+;GLOBAL ENUM ART_WRAPPER_STATES WR_READY,WR_WAIT,WR_INFEED,WR_OUTFEED,WR_ERROR,WR_BUSY
+;DECL GLOBAL ART_WRAPPER_STATES ARTWrapperState=#WR_WAIT
+
+   GLOBAL STRUC WRAPPER ART_DEVICE_STATE error_state, BOOL do_in_request,BOOL do_out_confirm,BOOL do_out_permit,BOOL in_complete,BOOL in_sensor,BOOL out_sensor,BOOL overflow_if
+   DECL GLOBAL WRAPPER ART_wrapper[1]
+   ART_wrapper[1] = {error_state #NORMAL, ready_error FALSE,do_in_request FALSE,do_out_confirm FALSE,do_out_permit FALSE,in_complete FALSE,in_sensor FALSE,out_sensor FALSE,overflow_if FALSE}
+ENDDAT

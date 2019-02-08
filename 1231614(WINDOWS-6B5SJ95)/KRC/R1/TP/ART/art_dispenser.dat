@@ -1,0 +1,10 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_dispenser PUBLIC
+   GLOBAL STRUC DISPENCER ART_DEVICE_STATE error_state, BOOL ready_error,BOOL do_request,BOOL do_taken,BOOL di_ready,BOOL di_ready_take,BOOL di_alarm,BOOL di_low_level,INT m_disp_not_ready, INT m_disp_alarm, INT m_disp_low_level
+   DECL GLOBAL DISPENCER ART_dispenser[1]
+   ART_dispenser[1] = {error_state #NORMAL, ready_error FALSE,do_request FALSE,do_taken FALSE,di_ready FALSE,di_ready_take FALSE,di_alarm FALSE,di_low_level FALSE,m_disp_not_ready 0,m_disp_alarm 0,m_disp_low_level 0}
+ENDDAT

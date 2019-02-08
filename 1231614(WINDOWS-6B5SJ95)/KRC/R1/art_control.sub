@@ -1,0 +1,28 @@
+&ACCESS RVP
+&COMMENT USER specified PLC program
+DEF  art_control ( )
+   $TIMER_FLAG[19] = FALSE
+   $TIMER_STOP[19] = TRUE
+   $TIMER[19] = -500
+   $TIMER_STOP[19] = FALSE
+   
+   $TIMER_FLAG[18] = FALSE
+   $TIMER_STOP[18] = FALSE
+   
+   ; Loop moduls SPSs.
+   LOOP
+      ART_air_SPS()
+      ARTBarrierDoSPS()
+      ARTHMIDoSPS()
+      ARTDispencerDoSPS()      
+      ARTGripperDoSPS()
+      ARTGripVacuumDoSPS()
+      ART_line_DoSPS()
+      ARTConveyorsDoSPS()
+      ARTPickPointDoSPS()
+      ARTStackDoSPS()
+      ARTStatDoSPS()
+      ART_PP_DoSPS()
+      ARTWrapperDoSPS()
+   ENDLOOP
+END

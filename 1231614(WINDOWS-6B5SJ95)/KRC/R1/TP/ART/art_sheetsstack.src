@@ -1,0 +1,81 @@
+﻿DEF art_sheetsstack ( )
+END
+;
+; **** SET SHEETSSTATE TO THE INITIAL STATE 
+;
+GLOBAL DEF ARTStackInit()
+   DECL INT stack_num
+   FOR stack_num = 1 TO STACK_COUNT
+      ARTHMIClearMessage(ART_stack[stack_num].m_low_level)
+      ARTHMIClearMessage(ART_stack[stack_num].m_stack_empty)
+      ART_stack[stack_num].is_low_level = FALSE
+      ART_stack[stack_num].error_state = #NORMAL
+   ENDFOR
+END
+;
+; Stack low level.
+;
+GLOBAL DEF ARTStackLow(stack_num:IN)
+   DECL INT stack_num
+   
+   ART_stack[stack_num].is_low_level = TRUE
+END
+;
+; Stack low level reset.
+;
+GLOBAL DEF ARTStackLowReset(stack_num:IN)
+   DECL INT stack_num
+   
+   ART_stack[stack_num].is_low_level = FALSE
+END
+;
+;
+;
+GLOBAL DEF ARTStackMuteOFF(stack_num:IN)
+   DECL INT stack_num
+   
+   ART_stack[stack_num].do_mute = FALSE
+END
+;
+;
+;
+GLOBAL DEF ARTStackMuteON(stack_num:IN)
+   DECL INT stack_num
+   
+   ART_stack[stack_num].do_mute = TRUE
+END
+; 
+; Sheets stack SPS.
+;
+GLOBAL DEF ARTStackDoSPS()
+   DECL INT stack_num
+   ; Var bind
+   ART_stack[1].is_empty = diStack1Empty
+   ART_stack[2].is_empty = diStack2Empty
+   doStack1Mute = ART_stack[1].do_mute
+   doStack2Mute = ART_stack[2].do_mute
+   
+   FOR stack_num = 1 TO STACK_COUNT
+      IF ARTHMIIsResetPushed() THEN
+         ARTHMIClearMessage(ART_stack[stack_num].m_low_level)
+         ARTHMIClearMessage(ART_stack[stack_num].m_stack_empty)
+         ART_stack[stack_num].error_state = #NORMAL
+      ENDIF
+   
+      ; Errors
+      IF ART_stack[stack_num].is_empty THEN
+         ARTHMISetMessage(ART_stack[stack_num].m_stack_empty,TRUE,"ARTSheetsStack", "SHEETSSTACK_EMPTY")
+         ARTSystemSetState(#ARTSYS_STATE_ERROR)
+         ART_stack[stack_num].error_state = #ERROR
+      ENDIF
+      
+      IF ART_stack[stack_num].is_low_level THEN
+         ARTHMISetMessage(ART_stack[stack_num].m_low_level,TRUE,"ARTSheetsStack", "SHEETSSTACK_LOW_LEVEL")
+         ARTSystemSetState(#ARTSYS_STATE_WARNING)
+         ART_stack[stack_num].error_state = #WARNING
+      ENDIF
+      
+
+      ; test
+   ENDFOR
+END

@@ -1,0 +1,109 @@
+&ACCESS RV2
+&REL 4
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_statistics ( )
+
+END
+; --- Initialize statistics for SPS run
+;
+;
+GLOBAL DEF ARTStatReset()
+   ; Count.
+   ARTStatProductCount = 0
+   ARTStatContainerCount[1] = 0
+   ARTStatContainerCount[2] = 0
+   ; Speed.
+   ARTStatSpeedInProduct = 0
+   ARTStatSpeedInContainer = 0
+   ARTStatFailsCount = 0
+   ; Fail rate. FailRate = Fails / Product
+   ARTStatFailRate = 100
+   ; Time
+   ARTStatRunTime = 0
+   ARTStatWaitTime = 0
+   ARTStatErrorTime = 0
+END
+; --- Reset statistics
+;
+;
+GLOBAL DEF ARTStatInitialize()
+  $TIMER_STOP[DEF_STAT_TIMER_WAIT] = TRUE
+  $TIMER[DEF_STAT_TIMER_WAIT] = 0
+  $TIMER_STOP[DEF_STAT_TIMER_ERR] = TRUE
+  $TIMER[DEF_STAT_TIMER_ERR] = 0
+  $TIMER_STOP[DEF_STAT_TIMER_RUN] = TRUE
+  $TIMER[DEF_STAT_TIMER_RUN] = 0
+END
+; --- Add products 
+;
+;
+GLOBAL DEF ARTStatProductCycle()
+   ARTStatProductCount = ARTStatProductCount + ART_ProdPerCycle
+   
+   IF ARTStatRunTime > 0 THEN
+      ARTStatSpeedInProduct = ARTStatProductCount / ARTStatRunTime
+   ENDIF 
+   
+   ARTStatCalcFailRate()
+END
+; --- Add container 
+;
+;
+GLOBAL DEF ARTStatPalletCycle(line:IN)
+   DECL INT line
+   ARTStatContainerCount[line] = ARTStatContainerCount[line] + ART_ContainerPerCycle
+   ARTStatContInBatch[line] = ARTStatContInBatch[line] + ART_ContainerPerCycle
+   
+   IF ARTStatRunTime > 0 THEN
+      ARTStatSpeedInContainer = (ARTStatContainerCount[1]+ARTStatContainerCount[2]) / ARTStatRunTime
+   ENDIF
+END
+; --- Add error counter
+;
+;
+GLOBAL DEF ARTStatAddFailure()
+   ARTStatFailsCount = ARTStatFailsCount + 1
+END
+; --- Calculate fail rate
+;
+;
+GLOBAL DEF ARTStatCalcFailRate()
+   IF ARTStatProductCount > 0 THEN
+      ARTStatFailRate = ARTStatFailsCount / ARTStatProductCount
+   ENDIF
+END
+; --- Run SPS cycle for the statistics
+;
+;
+GLOBAL DEF ARTStatDoSPS()
+   ;HANDLE RUN, NO MATERIAL WAIT AND ERROR TIMEERS
+   IF $MODE_OP <> #EX THEN
+      $TIMER_STOP[DEF_STAT_TIMER_WAIT] = TRUE
+      $TIMER_STOP[DEF_STAT_TIMER_ERR] = TRUE
+      $TIMER_STOP[DEF_STAT_TIMER_RUN] = TRUE
+   ELSE
+      $TIMER_STOP[DEF_STAT_TIMER_WAIT] = NOT($WAIT_FOR_ON1 AND ($PRO_STATE1 == #P_ACTIVE)) OR ($OV_PRO == 0)
+      $TIMER_STOP[DEF_STAT_TIMER_ERR] = NOT($STOPMESS)
+      $TIMER_STOP[DEF_STAT_TIMER_RUN] = (ARTControlMotionCmd <> #ARTMotionMainCycle) OR $WAIT_FOR_ON1 OR (NOT ($PRO_STATE1 == #P_ACTIVE))
+   ENDIF
+   
+   IF $TIMER[DEF_STAT_TIMER_RUN] > 1000 THEN
+      $TIMER[DEF_STAT_TIMER_RUN] = $TIMER[DEF_STAT_TIMER_RUN] - 1000
+      ARTStatRunTime = ARTStatRunTime + 0.0166667
+   ENDIF 
+   
+   IF $TIMER[DEF_STAT_TIMER_WAIT] > 1000 THEN
+      $TIMER[DEF_STAT_TIMER_WAIT] = $TIMER[DEF_STAT_TIMER_WAIT] - 1000
+      ARTStatWaitTime = ARTStatWaitTime + 0.0166667
+   ENDIF 
+
+   IF $TIMER[DEF_STAT_TIMER_ERR] > 1000 THEN 
+      $TIMER[DEF_STAT_TIMER_ERR] = $TIMER[DEF_STAT_TIMER_ERR] - 1000
+      ARTStatErrorTime = ARTStatErrorTime + 0.0166667
+   ENDIF
+   
+   IF ARTStatisticsResetCmd == TRUE THEN
+      ARTStatisticsResetCmd = FALSE
+      ARTStatReset()
+   ENDIF 
+END

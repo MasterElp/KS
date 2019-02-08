@@ -1,0 +1,87 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_dispenser( )
+END
+;
+;
+;
+GLOBAL DEF ARTDispenserInit()
+   ART_dispenser[1].ready_error = FALSE
+   ARTHMIClearMessage(ART_dispenser[1].m_disp_not_ready)
+   ARTHMIClearMessage(ART_dispenser[1].m_disp_alarm)
+   ARTHMIClearMessage(ART_dispenser[1].m_disp_low_level)
+END
+;
+;
+;
+GLOBAL DEFFCT BOOL ARTDispencerGive()
+   IF ART_dispenser[1].di_ready THEN
+      ART_dispenser[1].do_request = TRUE
+      RETURN TRUE
+   ELSE
+      ART_dispenser[1].ready_error = TRUE
+      RETURN FALSE
+   ENDIF
+ENDFCT
+;
+;
+;
+GLOBAL DEF ARTDispenserConfirm()
+   ART_dispenser[1].do_taken = TRUE
+END
+; **** SET GRIPPER TO THE INITIAL STATE 
+;
+;
+GLOBAL DEF ARTDispencerDoSPS()
+   ;vars bind
+   doDispenserRequest = ART_dispenser[1].do_request
+   doDispenserTaken = ART_dispenser[1].do_taken
+   
+   ART_dispenser[1].di_ready = diDispenserReady 
+   ART_dispenser[1].di_ready_take =  diDispenserReadyTake 
+   ART_dispenser[1].di_alarm = diDispenserAlarm 
+   ART_dispenser[1].di_low_level = diDispenserLow 
+   
+   IF ARTHMIIsResetPushed() THEN
+      ART_dispenser[1].ready_error = FALSE
+      ARTHMIClearMessage(ART_dispenser[1].m_disp_not_ready)
+      ARTHMIClearMessage(ART_dispenser[1].m_disp_alarm)
+      ARTHMIClearMessage(ART_dispenser[1].m_disp_low_level)
+      ART_dispenser[1].error_state = #NORMAL
+   ENDIF
+   ; Swith off Request signal
+   IF ART_dispenser[1].di_ready_take THEN
+      ART_dispenser[1].do_request = FALSE
+   ENDIF
+   ; Swith off Taken signal
+   IF ART_dispenser[1].di_ready THEN
+      ART_dispenser[1].do_taken = FALSE
+   ENDIF
+   ; Errors
+   IF ART_dispenser[1].di_alarm THEN
+      ARTHMISetMessage(ART_dispenser[1].m_disp_alarm,TRUE,"ARTDispenser", "DISPENSER_ALARM")
+      ARTSystemSetState(#ARTSYS_STATE_WARNING)
+      ART_dispenser[1].error_state = #ERROR
+   ENDIF
+   
+   IF ART_dispenser[1].di_low_level THEN
+      ARTHMISetMessage(ART_dispenser[1].m_disp_low_level,TRUE,"ARTDispenser", "DISPENSER_LOW_LEVEL")
+      ARTSystemSetState(#ARTSYS_STATE_WARNING)
+      ART_dispenser[1].error_state = #WARNING
+   ENDIF
+   
+   IF ART_dispenser[1].ready_error THEN
+      ARTHMISetMessage(ART_dispenser[1].m_disp_not_ready,TRUE,"ARTDispenser", "DISPENSER_NOT_READY")
+      ARTSystemSetState(#ARTSYS_STATE_WARNING)
+      ART_dispenser[1].error_state = #ERROR
+   ENDIF
+   ; test
+   IF doTestGivePallet THEN
+      IF ARTDispencerGive() THEN
+         doTestGivePallet = FALSE
+      ENDIF
+   ENDIF
+END

@@ -1,0 +1,34 @@
+&ACCESS RVO2
+&REL 380
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_gripper_fork PUBLIC
+;GLOBAL ENUM ART_GRIPPER_STATES GRP_READY,GRP_HOLDING,GRP_OPENING,GRP_CLOSING,GRP_ERROR
+GLOBAL ENUM ART_BAG_FORMATS BAG_FORMAT_1,BAG_FORMAT_2,BAG_FORMAT_3,BAG_FORMAT_4,BAG_FORMAT_5
+
+DECL GLOBAL ART_DEVICE_STATE ARTGripState=#NORMAL
+
+; Errors handlers.
+DECL INT m_n_check_ready=0
+DECL INT m_n_format_error=0
+DECL INT m_n_grip_timeout=0
+DECL INT m_n_release_timeout=0
+DECL INT m_sup_release_timeout=0
+DECL INT m_fork_open_chk=0
+DECL INT m_sup_open_chk=0
+DECL INT m_n_bag_out=0
+DECL INT m_n_collision=0
+DECL INT m_n_wrong_scheme=0
+DECL INT m_sup_close_timeout=0
+DECL INT m_fork_close_chk=0
+DECL BOOL fork_close_error=FALSE
+DECL BOOL support_up_error=FALSE
+DECL BOOL sup_grip_error=FALSE
+
+; Timeout timer.
+DECL INT DEF_GRIPPER_TIMEOUT=6000
+DECL INT ARTGripWaitTimer=0
+DECL INT ARTSupWaitTimer=0
+
+ENDDAT

@@ -1,0 +1,87 @@
+&ACCESS RVO2
+&REL 162
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_gripper_vacuum( )
+   ARTGripVacuumInit()
+END 
+; **** SET GRIPPER TO THE INITIAL STATE 
+;
+;
+GLOBAL DEF ARTGripVacuumInit()
+   ARTGripper_suckers_on=FALSE
+   ;ARTGripVacState=#NORMAL
+   ARTGripperIsMonitor = FALSE
+   ; Timers.
+   ARTGripWaitTimer = 0
+   
+   ; Messages.
+   ARTHMIClearMessage(GRIP_m_check_ready);m_n_check_ready = 0
+   ARTHMIClearMessage(GRIP_m_format_error);m_n_format_error = 0
+   ARTHMIClearMessage(GRIP_m_grip_timeout);m_n_grip_timeout = 0
+   ARTHMIClearMessage(GRIP_m_release_timeout);m_n_release_timeout = 0
+   ARTHMIClearMessage(GRIP_m_product_out);m_n_bag_out = 0
+   ARTHMIClearMessage(GRIP_m_collision);m_n_collision = 0
+END
+; 
+; Gripping.
+;
+GLOBAL DEF ARTGripVacuumGrip()
+   IF isMonitor THEN
+      ARTGripper_suckers_on = TRUE
+      ARTGripWaitTimer = ARTTimerGetTime()
+      REPEAT
+         IF ARTTimerIsTimePassed(ARTGripWaitTimer, DEF_GRIPPER_TIMEOUT) THEN
+            ARTHMISetMessage(GRIP_m_grip_timeout, TRUE, "ART_Gripper", "GRIPPER_GRIP_TIMEOUT")
+            ARTGripState=#ERROR
+            ARTSystemSetState( #ARTSYS_STATE_ERROR )
+         ENDIF
+      UNTIL isGripVacuumOK
+      ;ARTHMIClearMessage(GRIP_m_grip_timeout)
+      ARTGripWaitTimer = 0
+      ;WAIT FOR isGripVacuumOK    
+      ARTGripperIsMonitor = TRUE
+   ENDIF
+
+   ;ARTGripVacState = #GRP_HOLDING
+END
+; 
+; Release.
+;             
+GLOBAL DEF ARTGripVacuumRelease()
+   ARTGripper_suckers_on = FALSE
+   ARTGripperIsMonitor = FALSE
+   
+   ;ARTGripVacState = #GRP_READY
+END
+;
+GLOBAL DEFFCT BOOL ARTGripVacReleaseChk()
+   IF isGripVacuumOK THEN
+      RETURN FALSE
+   ELSE
+      RETURN TRUE
+   ENDIF
+ENDFCT
+;
+; Gripper SPS.
+;
+GLOBAL DEF ARTGripVacuumDoSPS()
+   doGripSuckersOn = ARTGripper_suckers_on
+   ; Vacuum monitor
+   IF (ARTGripperIsMonitor == TRUE) AND (isGripVacuumOK == FALSE) THEN
+      ARTSystemSetState( #ARTSYS_STATE_CRITICAL )
+      ARTHMISetMessage(GRIP_m_product_out, TRUE, "ART_Gripper", "GRIPPER_BAG_OUT")
+      ARTGripState=#ERROR
+   ENDIF
+   ;
+   ; RESET button pressed
+   ;
+   IF ARTHMIIsResetPushed() THEN
+      IF (ARTGripperIsMonitor == TRUE) AND (isGripVacuumOK == FALSE) THEN
+         ARTGripperIsMonitor = FALSE
+         ;ARTGripVacState=#NORMAL
+      ENDIF
+      ARTHMIClearMessage(GRIP_m_product_out)
+   ENDIF
+END

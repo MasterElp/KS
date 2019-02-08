@@ -1,0 +1,10 @@
+&ACCESS RVP
+&COMMENT USER specified PLC program
+DEF  art_safety ( )
+
+LOOP
+   ARTSafetyDoSPS()
+   ARTSysDoStateUpdate()
+ENDLOOP
+
+END

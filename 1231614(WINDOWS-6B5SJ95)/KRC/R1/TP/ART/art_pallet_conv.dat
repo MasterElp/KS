@@ -1,0 +1,46 @@
+&ACCESS RVO2
+&REL 39
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_pallet_conv PUBLIC
+
+GLOBAL ENUM ART_CONVEYOR_STATES CONV_OVERFLOW,CONV_STOP,CONV_RUN,CONV_REV,DEBUG ; CONV_ERROR
+GLOBAL STRUC CONVEYOR BOOL stop_state,ART_DEVICE_STATE error_state,BOOL doRun,BOOL doReverse,BOOL doReset,BOOL in_sensor,BOOL out_sensor,BOOL object_out,BOOL diError,BOOL overflow_if,BOOL run_if,ART_CONVEYOR_STATES state,INT bagDisableTime,INT PASS_TIME,INT m_FC_error
+DECL GLOBAL CONVEYOR ART_pal_conveyors[9]
+
+; conveyor 1 
+ART_pal_conveyors[1]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 2 cross
+ART_pal_conveyors[2]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 3 cross
+ART_pal_conveyors[3]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 4
+ART_pal_conveyors[4]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 5 
+ART_pal_conveyors[5]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 6 up
+ART_pal_conveyors[6]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor TRUE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 7 up
+ART_pal_conveyors[7]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor TRUE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 8 pp
+ART_pal_conveyors[8]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+; conveyor 9 pp
+ART_pal_conveyors[9]={stop_state FALSE,error_state #NORMAL,doRun FALSE,doReverse FALSE,doReset FALSE,in_sensor FALSE,out_sensor FALSE,object_out FALSE,diError FALSE,overflow_if FALSE,run_if FALSE,state #CONV_STOP,bagDisableTime 0,PASS_TIME 5000,m_FC_error 0}
+
+GLOBAL STRUC CONVEYOR_LIFT ART_DEVICE_STATE error_state,BOOL go_up,BOOL go_down,BOOL in_top,BOOL in_bottom,INT lift_time,INT m_lift_error
+DECL GLOBAL CONVEYOR_LIFT ART_lifts[2]
+ART_lifts[1]={error_state #NORMAL,go_up FALSE,go_down FALSE,in_top FALSE,in_bottom FALSE,lift_time 264780,m_lift_error 10004}
+ART_lifts[2]={error_state #NORMAL,go_up FALSE,go_down FALSE,in_top FALSE,in_bottom FALSE,lift_time 264787,m_lift_error 10005}
+DECL INT DEF_LIFT_TIME=5000
+DECL INT m_pallet_ready=0
+
+
+; Log
+DECL INT ART_BagInTimer=0
+DECL GLOBAL INT ART_BagInTime=0
+DECL GLOBAL BOOL ART_BagInTimeF=FALSE
+DECL BOOL BagInF=FALSE
+
+ENDDAT
+

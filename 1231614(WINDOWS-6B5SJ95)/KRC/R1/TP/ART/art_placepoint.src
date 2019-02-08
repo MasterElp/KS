@@ -1,0 +1,177 @@
+&ACCESS RVO2
+&REL 57
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_placepoint ( )
+END
+; 
+; Work area init.
+;
+GLOBAL DEF ART_PP_Initialize()
+   DECL INT line_num
+   DECL INT place_point_num
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      FOR place_point_num = 1 TO 1
+         ART_place_point[line_num, place_point_num].state = #WA_IN
+         ART_place_point[line_num, place_point_num].passed = FALSE
+         ART_place_point[line_num, place_point_num].pallet_out = FALSE
+         ART_place_point[line_num, place_point_num].buttonPressTime = 0
+         ART_place_point[line_num, place_point_num].error_state = #NORMAL
+
+         ;ART_work_areas[chain_num, place_point_num].scheme_number = 0
+         ARTHMIClearMessage(ART_place_point[line_num, place_point_num].m_handle_not_ready)
+         ARTHMIClearMessage(ART_place_point[line_num, place_point_num].m_h_service_mode)
+         ARTHMIClearMessage(ART_place_point[line_num, place_point_num].m_h_barrier_pass)
+         ARTHMIClearMessage(ART_place_point[line_num, place_point_num].m_handle_ready_conf)
+         ARTHMIClearMessage(ART_place_point[line_num, place_point_num].m_pallet_out)
+      ENDFOR
+   ENDFOR
+   
+END
+; 
+; Select ready work area.
+;
+GLOBAL DEF ART_PP_Select()
+   DECL INT line_num
+   DECL INT place_point_num
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      ; Continue when work area selected 
+      IF (ART_line[line_num].useWorkArea <= 0) THEN
+         ; Select ready work area 
+         FOR place_point_num = 1 TO DEF_WA_COUNT
+            IF (ART_place_point[line_num, place_point_num].state == #WA_READY) THEN
+               ART_line[line_num].useWorkArea = place_point_num
+               ART_line_new_scheme(line_num)
+            ENDIF
+         ENDFOR
+      ENDIF
+      IF (ART_line[line_num].useWorkArea > 0) THEN
+         ART_place_point[line_num, ART_line[line_num].useWorkArea].state = #WA_BUSY
+      ENDIF
+   ENDFOR
+END
+;
+; Reset BUSY state, when scheme changed. After select ready work area.
+; 
+GLOBAL DEF ART_PP_sheme_changed()
+   DECL INT line_num
+   DECL INT place_point_num
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      IF ART_line[line_num].scheme_change THEN
+         FOR place_point_num = 1 TO DEF_WA_COUNT
+            IF (ART_place_point[line_num, place_point_num].state == #WA_BUSY) THEN
+               ART_line[line_num].scheme_change = FALSE
+               ART_PP_Full(line_num)
+            ENDIF
+         ENDFOR
+      ENDIF
+   ENDFOR
+         
+   ART_PP_Select()
+END
+; 
+; Set work area to full state.
+;
+GLOBAL DEF ART_PP_Full(line_num: IN)
+   DECL INT line_num
+   ART_place_point[line_num, ART_line[line_num].useWorkArea].state = #WA_OUT
+   ART_line[line_num].isPalletDone = FALSE
+   ART_line[line_num].is50PercentDone = FALSE
+   ART_line[line_num].current_bag = 0
+   ART_line[line_num].useWorkArea = 0
+END
+;
+; Work area pallet out.
+; 
+GLOBAL DEF ART_PP_pallet_out(line_num :IN, place_point_num :IN)
+   DECL INT line_num
+   DECL INT place_point_num
+
+   ;IF (ART_work_areas[line_num, place_point_num].state == #WA_OUT) THEN
+   ART_place_point[line_num, place_point_num].state = #WA_GIVE_WAIT
+   ;ENDIF
+END
+;
+; Work area pallet in.
+; 
+GLOBAL DEF ART_PP_pallet_in(line_num :IN, place_point_num :IN)
+   DECL INT line_num
+   DECL INT place_point_num
+
+   IF (ART_place_point[line_num, place_point_num].state == #WA_IN) THEN
+      ART_place_point[line_num, place_point_num].state = #WA_READY
+   ENDIF
+END
+; 
+; Work areas SPS.
+;
+GLOBAL DEF ART_PP_DoSPS()
+   DECL INT line_num
+   DECL INT place_point_num
+   ;
+   ; var binding
+   ;
+ 
+   ART_place_point[1,1].di_FramePalletIn = diConveyor8Out
+   ART_place_point[2,1].di_FramePalletIn = diConveyor9Out
+
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      FOR place_point_num = 1 TO DEF_WA_COUNT
+         IF ARTHMIIsResetPushed() THEN
+            ART_place_point[line_num, place_point_num].error_state = #NORMAL
+         ENDIF
+         ;
+         ; Wait pallet giving state.
+         ; 
+         IF (ART_place_point[line_num, place_point_num].state == #WA_GIVE_WAIT) THEN
+             IF ARTDispencerGive() THEN
+                ART_place_point[line_num, place_point_num].state = #WA_IN
+             ENDIF
+         ENDIF
+         ;
+         ; IN state.
+         ; 
+         IF (ART_place_point[line_num, place_point_num].state == #WA_IN) THEN
+            IF ART_place_point[line_num, place_point_num].di_FramePalletIn THEN
+               ART_place_point[line_num, place_point_num].state = #WA_READY
+            ENDIF
+         ENDIF
+         ;
+         ; READY state.
+         ;
+         IF (ART_place_point[line_num, place_point_num].state == #WA_READY) THEN
+             IF ARTDispencerGive() THEN
+                ART_place_point[line_num, place_point_num].state = #WA_IN
+             ENDIF
+         ENDIF
+         ;
+         ; BUSY state.
+         ;
+         IF (ART_place_point[line_num, place_point_num].state == #WA_BUSY) THEN
+            IF NOT ART_place_point[line_num, place_point_num].di_FramePalletIn THEN
+               ARTHMISetMessage(ART_place_point[line_num, place_point_num].m_pallet_out, TRUE, "ARTWA", "WA_PALLET_OUT")
+               ART_place_point[line_num, place_point_num].error_state = #ERROR
+               ARTSystemSetState(#ARTSYS_STATE_ERROR)
+            ENDIF
+         ENDIF
+         ;
+         ; OUT state.
+         ; 
+         IF (ART_place_point[line_num, place_point_num].state == #WA_OUT) THEN
+         ENDIF
+         
+      ENDFOR
+   ENDFOR
+   ;
+   ; Test
+   ;
+   IF doTest_WA1_Full THEN
+      ART_PP_Full(1)
+      doTest_WA1_Full = FALSE
+   ENDIF
+   IF doTest_WA2_Full THEN
+      ART_PP_Full(2)
+      doTest_WA2_Full = FALSE
+   ENDIF
+END

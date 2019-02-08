@@ -1,0 +1,660 @@
+&ACCESS RVO2
+&REL 1030
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF  art_core ( )
+
+END
+; **** ART CORE LIBRARY 
+; DATE:    08/02/2019
+; VERSION: 3.03
+; CHANGES: DOCUMENTATION
+;
+GLOBAL DEF ARTControlInitialize()
+   start_state_confirm = FALSE
+   start_state_pressed = FALSE
+   ART_START_PUSHED = FALSE
+   ART_RESET_PUSHED = FALSE
+   ART_STOP_PUSHED = FALSE
+   ARTControlMotionCmd = #ARTMotionGoHome
+   ARTHMIWarningTimer = 0
+   ARTSystemStateTimer = ARTTimerGetTime()
+   ARTHMIClearMessage( m_handleErrAir )
+   ARTHMIClearMessage( m_handleErrStopmess )
+   ARTHMIClearMessage( m_handleErrProgram )
+   ARTHMIClearMessage( m_handleErrStopped )
+   ARTHMIClearMessage( m_ext_emergency_stop )
+END
+;
+; -------------- SAFETY SECTION -------------------
+;
+;
+GLOBAL DEF ARTSafetyDoSPS()
+   ; Check air pressure. Notify it's low, but set CRITICAL error only in full speed run.
+   IF (ART_Air_low_preassure == TRUE) THEN
+      IF ($MODE_OP > #T1) THEN 
+         ARTSystemSetState( #ARTSYS_STATE_CRITICAL )
+      ENDIF
+      ARTHMISetMessage(m_handleErrAir, TRUE, "ARTCore", "CORE_ERR_AIR_LOW")
+   ELSE
+      ;ARTHMIClearMessage( m_handleErrAir)        
+   ENDIF
+   ;
+   ; Check for internal controller errors.
+   IF ($MODE_OP > #T1) AND ($STOPMESS == TRUE) THEN ;AND (ART_Air_low_preassure == FALSE)
+      ARTSystemSetState( #ARTSYS_STATE_CRITICAL )
+      ARTHMISetMessage(m_handleErrStopmess, TRUE, "ARTCore", "CORE_ERR_STOPMESS")
+   ELSE
+      ARTHMIClearMessage( m_handleErrStopmess )
+   ENDIF
+END
+;
+; --- SYSTEM STATE MONITORING PROCEDURE
+;
+GLOBAL DEF ARTSysDoStateUpdate( ) ;Safety SPS.
+   ; If system state is better for enough time for each device says it's state, then update current state.
+   IF ARTTimerIsTimePassed ( ARTSystemStateTimer, DEF_SYS_UPDATE_RATE ) THEN
+      ARTSystemStateTimer = ARTTimerGetTime()
+      ARTSystemState = ARTSystemStateNew
+      ARTSystemStateNew = #ARTSYS_STATE_NORMAL
+   ENDIF
+   
+   StartButtonPressedChk()
+   ConfirmStateControl()
+      
+   IF ($MODE_OP > #T1) THEN
+      ;Check for program selected.
+      IF (($PRO_STATE1 == #P_END) OR ($PRO_STATE1 == #P_FREE)) THEN 
+         ARTSystemSetState( #ARTSYS_STATE_ERROR )
+         ARTHMISetMessage(m_handleErrProgram, TRUE, "ARTCore", "CORE_ERR_PROGRAM")
+      ELSE
+         IF m_handleErrProgram > 0 THEN
+            ARTHMIClearMessage( m_handleErrProgram )
+         ENDIF
+      ENDIF
+      ; Check for system stopped state. Update current state.
+      IF ($STOPMESS == FALSE) THEN 
+         IF (($PRO_STATE1 == #P_RESET) OR ($PRO_STATE1 == #P_STOP)) OR (($OV_PRO == 0) AND ($PRO_STATE1 == #P_ACTIVE)) THEN 
+            ARTHMISetMessage(m_handleErrStopped, TRUE, "ARTCore", "CORE_ERR_PROGRAM_STOPPED")
+            ;IF (start_state_pushed == FALSE) THEN
+               ARTSystemSetState( #ARTSYS_STATE_STOPPED )
+            ;ENDIF
+         ELSE
+            ARTHMIClearMessage( m_handleErrStopped )
+         ENDIF
+      ENDIF
+   ELSE ; ($MODE_OP = #T1)
+      ARTHMIClearMessage( m_handleErrStopped )
+      ARTHMIClearMessage( m_handleErrProgram )
+      IF ARTHMIIsStartPushed() THEN
+         IF ARTControlMotionCmd == #ARTMotionNone THEN
+            ARTControlMotionCmd = #ARTMotionMainCycle
+         ENDIF
+         ARTControlStartMotion()
+      ENDIF
+   ENDIF
+END
+;
+; Checked start button pressed for DEF_SYS_START_RATE time.
+;
+DEF StartButtonPressedChk()
+   IF start_state_pressed AND (ARTSystemState == #ARTSYS_STATE_STOPPED) AND ARTTimerIsTimePassed ( ARTSystemStartTimer, DEF_SYS_START_RATE ) THEN        
+      $OV_PRO = ARTHMISavedOVPro
+   ENDIF
+   IF NOT ARTHMIIsStartPushed() THEN
+      start_state_pressed = FALSE
+      ARTSystemStartTimer = 0
+   ENDIF
+END
+;
+; Control confirm state. Reset state after DEF_SYS_CONFIRM_RESET time pass.
+;
+DEF ConfirmStateControl()
+   IF (start_state_confirm == TRUE) THEN
+      IF (ARTHMIConfirmTimer == 0) THEN
+         ARTHMIConfirmTimer = ARTTimerGetTime()
+      ENDIF
+   ELSE
+      ARTHMIConfirmTimer = 0
+   ENDIF
+      
+   IF ARTTimerIsTimePassed ( ARTHMIConfirmTimer, DEF_SYS_CONFIRM_RESET ) THEN
+      start_state_confirm = FALSE
+   ENDIF
+END
+;
+; Set state procedure.
+;
+GLOBAL DEF ARTSystemSetState( state:IN )
+   DECL ARTSYS_STATE_TYPE state
+  
+   IF VARSTATE("state") <> #INITIALIZED THEN
+      state = #ARTSYS_STATE_ERROR             
+   ENDIF
+   
+   SWITCH( state )
+      CASE #ARTSYS_STATE_EXTSTOP
+      ;   IF ARTSystemState <= #ARTSYS_STATE_EXTSTOP THEN
+      ;      ARTSystemStateTimer = ARTTimerGetTime()
+      ;      ARTSystemState = #ARTSYS_STATE_EXTSTOP
+      ;      ARTSystemStateNew = #ARTSYS_STATE_STOPPED
+      ;   ENDIF        
+      CASE #ARTSYS_STATE_CRITICAL
+         ARTSystemStateTimer = ARTTimerGetTime()
+         ARTSystemState = #ARTSYS_STATE_CRITICAL
+         ARTSystemStateNew = #ARTSYS_STATE_STOPPED         
+      CASE #ARTSYS_STATE_ERROR
+         IF ARTSystemState <= #ARTSYS_STATE_ERROR THEN
+            ARTSystemStateTimer = ARTTimerGetTime()
+            ARTSystemState = #ARTSYS_STATE_ERROR
+            ARTSystemStateNew = #ARTSYS_STATE_STOPPED
+         ENDIF         
+      CASE #ARTSYS_STATE_WARNING
+         IF ARTSystemState <= #ARTSYS_STATE_WARNING THEN
+            ARTSystemStateTimer = ARTTimerGetTime()
+            ARTSystemState = #ARTSYS_STATE_WARNING
+            ARTSystemStateNew = #ARTSYS_STATE_NORMAL
+         ENDIF     
+      CASE #ARTSYS_STATE_STARTING
+         ;IF ARTSystemState <= #ARTSYS_STATE_STARTING THEN
+            ;ARTSystemStateTimer = ARTTimerGetTime()
+            ;ARTSystemState = #ARTSYS_STATE_STARTING
+            ;ARTSystemStateNew = #ARTSYS_STATE_NORMAL
+         ;ENDIF            
+      CASE #ARTSYS_STATE_STOPPED
+         IF ARTSystemState <= #ARTSYS_STATE_STOPPED THEN
+            ARTSystemStateTimer = ARTTimerGetTime()
+            ARTSystemState = #ARTSYS_STATE_STOPPED
+            ARTSystemStateNew = #ARTSYS_STATE_NORMAL
+         ENDIF  
+      CASE #ARTSYS_STATE_NORMAL
+   ENDSWITCH
+END
+;
+; Motion control.
+;
+GLOBAL DEF ARTControlStopMotion()
+   IF $OV_PRO > 0 THEN
+      ;ARTHMISavedOVPro = $OV_PRO
+      $OV_PRO = 0
+      start_state_confirm = FALSE
+   ENDIF
+END
+;
+GLOBAL DEF ARTControlStartMotion()
+   IF ($OV_PRO == 0) THEN
+      IF (start_state_confirm == TRUE) THEN
+         ARTSystemStartTimer = ARTTimerGetTime()
+         start_state_pressed = TRUE
+         start_state_confirm = FALSE
+         ;$OV_PRO = ARTHMISavedOVPro
+      ENDIF
+   ENDIF
+END
+;
+GLOBAL DEFFCT BOOL ARTControlMotionInt()
+   IF ((ARTControlMotionCmd <> #ARTMotionMainCycle) AND (ARTControlMotionCmd <> #ARTMotionEndCycle)) THEN
+     RETURN TRUE
+   ENDIF
+   
+   RETURN FALSE
+ENDFCT
+;
+; HMI SPS handler.
+;
+GLOBAL DEF ARTHMIDoSPS()
+   ARTHMIControlButtons()
+   ARTFullHMIControl()
+   ARTHMIDoLampsAndLights()
+   ARTHMIDoBlinkChange()
+   ;  Control drivers turn ON for external mode.
+   IF (($PERI_RDY == FALSE) AND (doControlDrivesON == FALSE)) THEN
+      PULSE( doControlDrivesON, TRUE, 1 )
+   ENDIF 
+END
+;
+; Outs external control by Full HMI.
+;
+DEF ARTFullHMIControl()
+   ART_HMI_Button_Push(ART_START_PUSHED, HMI_StartButtonPush)
+   ART_HMI_Button_Push(ART_RESET_PUSHED, HMI_ResetButtonPush)
+   ART_HMI_Button_Push(ART_STOP_PUSHED, HMI_StopButtonPush)
+    
+   DO_EXTERNAL_CONTROL() 
+END
+; 
+; 
+;
+DEF DO_EXTERNAL_CONTROL()
+   INT numOUT 
+   BOOL valueOUT
+   ;HANDLE INPUT FROM THE PC
+   IF (EXT_OUT_MSG <> 0) THEN
+      numOUT = EXT_OUT_MSG B_AND 'B00111111111111'
+      valueOUT = ((EXT_OUT_MSG B_AND 'B01000000000000') <> 0)
+      $OUT[numOUT] = valueOUT
+      EXT_OUT_MSG = 0
+   ENDIF
+END
+;
+; Do Buttons and Controls.
+;
+DEF ARTHMIControlButtons()
+   IF ARTHMIIsResetPushed() THEN
+      ARTHMIClearMessage( m_handleErrStopmess )
+      ARTHMIClearMessage( m_handleErrProgram )
+      ARTHMIClearMessage( m_handleErrStopped )
+      ARTHMIClearMessage( m_handleErrAir )
+      ARTHMIClearMessage( m_ext_emergency_stop )
+   ENDIF
+   
+   SWITCH ARTSystemState
+      CASE #ARTSYS_STATE_NORMAL
+         ;
+         IF ARTHMIIsStopPushed() THEN
+            ARTControlStopMotion()
+         ENDIF
+         ;
+         IF ARTHMIIsStartPushed() THEN
+            IF ARTControlMotionCmd == #ARTMotionNone THEN
+               ARTControlMotionCmd = #ARTMotionMainCycle
+            ENDIF
+            ARTControlStartMotion()
+         ENDIF
+  
+      CASE #ARTSYS_STATE_STOPPED 
+         ;            
+         IF ARTHMIIsStartPushed() THEN
+            IF ARTControlMotionCmd == #ARTMotionNone THEN
+               ARTControlMotionCmd = #ARTMotionMainCycle
+            ENDIF
+            ARTControlStartMotion()
+         ENDIF
+         ;
+         IF ARTHMIIsResetPushed() THEN
+            start_state_confirm = TRUE
+         ENDIF
+            
+      CASE #ARTSYS_STATE_STARTING
+         ;IF NOT ARTHMIIsStartPushed() THEN
+         ;   ARTSystemSetState(#ARTSYS_STATE_STOPPED)
+         ;   ARTControlStopMotion()
+         ;ENDIF
+         ;
+         ;IF ARTHMIIsStopPushed() OR ARTHMIIsResetPushed() THEN
+         ;   ARTSystemSetState(#ARTSYS_STATE_STOPPED)
+         ;   ARTControlStopMotion()
+         ;ENDIF     
+      
+      CASE #ARTSYS_STATE_EXTSTOP
+         ;Every device has it's say how to react to External Stop
+         ;do_emergency_signal = TRUE
+         ;IF ARTHMIIsStartPushed() THEN
+         ;   IF ARTControlMotionCmd == #ARTMotionNone THEN
+         ;      ARTControlMotionCmd = #ARTMotionMainCycle
+         ;   ENDIF
+         ;   ARTControlStartMotion()
+         ;ENDIF
+         ;
+         ;IF ARTHMIIsStopPushed() THEN
+         ;   ARTControlStopMotion()
+         ;ENDIF
+            
+     CASE #ARTSYS_STATE_WARNING
+         ;
+         IF ARTHMIIsStopPushed() THEN
+            ARTControlStopMotion()
+         ENDIF
+            
+         IF ARTHMIIsStartPushed() THEN
+            IF ARTControlMotionCmd == #ARTMotionNone THEN
+               ARTControlMotionCmd = #ARTMotionMainCycle
+            ENDIF
+            ARTControlStartMotion()
+         ENDIF
+
+      CASE #ARTSYS_STATE_ERROR
+         ARTControlStopMotion()
+          
+      CASE #ARTSYS_STATE_CRITICAL
+         ARTControlStopMotion()
+            
+   ENDSWITCH
+END
+;
+; HMI_var - variable changed by HMI, hardware_out - button out connected with button in
+;
+GLOBAL DEF ART_HMI_Button_Pulse(HMI_var :OUT, hardware_out :OUT)
+   DECL BOOL HMI_var
+   DECL BOOL hardware_out
+   
+   IF HMI_var THEN
+      hardware_out = TRUE
+      HMI_var = FALSE
+   ELSE
+      hardware_out = FALSE
+   ENDIF
+END
+;
+; HMI_var - variable changed by HMI, hardware_out - button out connected with button in
+;
+GLOBAL DEF ART_HMI_Button_Push(HMI_var :IN, hardware_out :OUT)
+   DECL BOOL HMI_var
+   DECL BOOL hardware_out
+   
+   hardware_out = HMI_var
+END
+;
+; --- HMI Check if button is pressed
+;
+;
+GLOBAL DEFFCT BOOL ARTHMIIsStopPushed()
+   RETURN isStopButtonPushed OR IS_KEY_PRESSED( DEF_STOP_KN )
+ENDFCT
+;
+GLOBAL DEFFCT BOOL ARTHMIIsStartPushed()
+   RETURN isStartButtonPushed OR IS_KEY_PRESSED( DEF_START_KN )
+ENDFCT
+;
+GLOBAL DEFFCT BOOL ARTHMIIsResetPushed()
+   RETURN isResetButtonPushed OR IS_KEY_PRESSED( DEF_RESET_KN )
+ENDFCT
+;
+; HMI Do Lamps and Buttons controls
+;
+DEF ARTHMIDoLampsAndLights()
+      SWITCH ARTSystemState             
+         CASE #ARTSYS_STATE_NORMAL
+            doResetButtonLightSignal = FALSE
+            doStopButtonLightSignal = TRUE
+            doStartButtonLightSignal = TRUE
+            
+            doControlLRedSignal = FALSE
+            doControlLYellowSignal = FALSE
+            doControlLGreenSignal = TRUE
+            doControlLSoundSignal = FALSE
+                        
+         CASE #ARTSYS_STATE_STOPPED
+            IF (start_state_pressed == TRUE) THEN
+               doResetButtonLightSignal = FALSE
+               doStopButtonLightSignal = TRUE
+               doStartButtonLightSignal = TRUE
+               
+               doControlLGreenSignal = ARTHMIBlinkLong
+               doControlLRedSignal = FALSE
+               doControlLYellowSignal = TRUE
+               doControlLSoundSignal = ARTHMIErrorSound
+            ELSE
+               IF (start_state_confirm == TRUE) THEN
+                  doResetButtonLightSignal = FALSE
+                  doStopButtonLightSignal = FALSE
+                  doStartButtonLightSignal = ARTHMIBlinkLong
+                  doControlLSoundSignal = FALSE
+               ELSE
+                  doResetButtonLightSignal = ARTHMIBlinkLong
+                  doStopButtonLightSignal = FALSE
+                  doStartButtonLightSignal = FALSE
+                  doControlLSoundSignal = FALSE
+               ENDIF
+               
+               doControlLRedSignal = FALSE
+               doControlLYellowSignal = TRUE
+               doControlLGreenSignal = ARTHMIBlinkLong
+               doControlLSoundSignal = FALSE
+            ENDIF
+ 
+         CASE #ARTSYS_STATE_STARTING
+            doResetButtonLightSignal = FALSE
+            doStopButtonLightSignal = TRUE
+            doStartButtonLightSignal = TRUE
+            
+            doControlLGreenSignal = TRUE
+            doControlLRedSignal = FALSE
+            doControlLYellowSignal = ARTHMIBlinkLong
+            doControlLSoundSignal = ARTHMIErrorSound
+   
+         CASE #ARTSYS_STATE_EXTSTOP
+            ;doResetButtonLightSignal = FALSE
+           ; doStopButtonLightSignal = ARTHMIBlinkLong
+           ; doStartButtonLightSignal = TRUE
+           ; doControlLSoundSignal = FALSE
+            
+            ;doControlLRedSignal = FALSE
+           ; doControlLYellowSignal = TRUE
+           ; doControlLGreenSignal = ARTHMIBlinkLong
+           ; doControlLSoundSignal = FALSE
+            
+         CASE #ARTSYS_STATE_WARNING
+            doResetButtonLightSignal = FALSE
+            doStopButtonLightSignal = TRUE
+            doStartButtonLightSignal = TRUE
+            
+            doControlLGreenSignal = TRUE
+            doControlLRedSignal = FALSE
+            doControlLYellowSignal = ARTHMIBlinkLong
+            doControlLSoundSignal = ARTHMIWarningSound
+                     
+         CASE #ARTSYS_STATE_ERROR
+            doResetButtonLightSignal = FALSE
+            doStopButtonLightSignal = FALSE
+            doStartButtonLightSignal = ARTHMIBlinkLong
+            
+            doControlLGreenSignal = TRUE
+            doControlLYellowSignal = FALSE
+            doControlLRedSignal = ARTHMIBlinkLong
+            doControlLSoundSignal = ARTHMIErrorSound               
+            
+         CASE #ARTSYS_STATE_CRITICAL    
+            doResetButtonLightSignal = ARTHMIBlinkLong
+            doStartButtonLightSignal = FALSE
+            doStopButtonLightSignal = FALSE
+            
+            doControlLYellowSignal = FALSE
+            doControlLGreenSignal = FALSE
+            doControlLRedSignal = ARTHMIBlinkLong
+            doControlLSoundSignal = ARTHMIErrorSound               
+      ENDSWITCH
+END
+;
+; HMI Blink Values Handler.
+;
+; --- CHANGE ARTHMIBlinkShort STATE EVERY 350 ms
+; --- CHANGE ARTHMIBlinkLong STATE EVERY 500 ms
+DEF ARTHMIDoBlinkChange()
+   IF $TIMER_FLAG[18] THEN
+      $TIMER[18] = -2000
+      ARTHMIWarningSound = ($MODE_OP > #T2)
+      
+      IF ARTHMIWarningTimer == 0 THEN
+         ARTHMIWarningTimer = ARTTimerGetTime()
+      ELSE
+         IF ARTTimerIsTimePassed( ARTHMIWarningTimer, 350) THEN
+            $TIMER_FLAG[18] = FALSE 
+            ARTHMIWarningTimer = 0
+         ENDIF
+      ENDIF
+   ELSE
+      ARTHMIWarningSound = FALSE
+   ENDIF
+      
+   IF $TIMER_FLAG[19] THEN
+      $TIMER_FLAG[19] = FALSE
+      ARTHMIBlinkShort = NOT ARTHMIBlinkShort
+      
+      IF ARTHMIBlinkShort == TRUE THEN
+         ARTHMIBlinkLong = NOT ARTHMIBlinkLong
+      ENDIF
+      ; Sound only in EXT mode
+      ARTHMIErrorSound = ($MODE_OP > #T2) AND ARTHMIBlinkLong
+      
+      $TIMER[19] = -250
+   ENDIF
+END
+;
+; Messages functions.
+;
+GLOBAL DEFFCT INT ARTHMISetDialog( isLog: IN, msgNum: IN, msgModule: IN, msgKey: IN, answ1Key:IN, answ2Key:IN  )
+   INT msgNum
+   CHAR msgModule[], msgKey[], answ1Key[], answ2Key[]
+   BOOL isLog, res
+   DECL KRLMSGPAR_T msgParams[3]
+   DECL KRLMSGOPT_T msgOption
+   DECL KRLMSGDLGSK_T msgAnsw[7]
+   DECL KRLMSG_T    msg
+   DECL INT handle, numAnsw
+
+   IF VARSTATE("isLog") <> #INITIALIZED THEN
+      isLog = FALSE
+   ENDIF
+
+   IF VARSTATE("msgNum") <> #INITIALIZED THEN
+      msgNum = 1
+   ENDIF
+   
+   msg.NR = msgNum
+   msgOption = { VL_STOP FALSE, CLEAR_P_RESET TRUE, CLEAR_P_SAW FALSE, LOG_TO_DB FALSE }
+   msgOption.LOG_TO_DB = isLog
+   
+   msgParams[1] = { PAR_TYPE #EMPTY }
+   msgParams[2] = { PAR_TYPE #EMPTY }
+   msgParams[3] = { PAR_TYPE #EMPTY }
+   
+   msgAnsw[1] = { SK_TYPE #KEY }
+   msgAnsw[2] = { SK_TYPE #KEY }
+   msgAnsw[3] = { SK_TYPE #EMPTY }
+   msgAnsw[4] = { SK_TYPE #EMPTY }
+   msgAnsw[5] = { SK_TYPE #EMPTY }
+   msgAnsw[6] = { SK_TYPE #EMPTY }
+   msgAnsw[7] = { SK_TYPE #EMPTY }
+   
+   res = STRCOPY( msgAnsw[1].SK_TXT[], answ1Key[] )
+   res = STRCOPY( msgAnsw[2].SK_TXT[], answ2Key[] )
+   res = STRCOPY( msg.MODUL[], msgModule[] )
+   res = STRCOPY( msg.MSG_TXT[], msgKey[] )   
+   
+   handle = SET_KRLDLG(msg, msgParams[], msgAnsw[], msgOption)
+   numAnsw = 0
+   
+   IF ( handle > 0 ) THEN
+     WHILE (Exists_KrlDlg(handle, numAnsw))
+        WAIT SEC 0.5
+     ENDWHILE
+   ENDIF
+   
+   return numAnsw
+ENDFCT
+;
+;
+;
+GLOBAL DEF ARTHMISetMessage( handle: OUT, isLog: IN, msgModule: IN, msgKey: IN  )
+   INT handle
+   CHAR msgModule[], msgKey[]
+   BOOL isLog, res
+   DECL KRLMSGPAR_T msgParams[3]
+   DECL KRLMSGOPT_T msgOption
+   DECL KRLMSG_T    msg
+   
+   IF VARSTATE("isLog") <> #INITIALIZED THEN
+      isLog = FALSE
+   ENDIF
+
+   IF VARSTATE("handle") <> #INITIALIZED THEN
+      RETURN
+   ENDIF
+   
+   IF (handle <= 0) THEN
+      msgOption = { VL_STOP FALSE, CLEAR_P_RESET TRUE, CLEAR_P_SAW FALSE, LOG_TO_DB FALSE }
+      msgOption.LOG_TO_DB = isLog
+      
+      msgParams[1] = { PAR_TYPE #EMPTY }
+      msgParams[2] = { PAR_TYPE #EMPTY }
+      msgParams[3] = { PAR_TYPE #EMPTY }
+      msg.NR = 1
+      
+      ON_ERROR_PROCEED
+      res = STRCOPY( msg.MODUL[], msgModule[] )
+      
+      ON_ERROR_PROCEED
+      res = STRCOPY( msg.MSG_TXT[], msgKey[] )   
+      
+      handle = SET_KRLMSG (#STATE, msg, msgParams[], msgOption )
+      ;RETURN SET_KRLMSG (#STATE, msg, msgParams[], msgOption )
+   ENDIF
+END
+;
+; Clear massage.
+;
+GLOBAL DEF ARTHMIClearMessage( handle: OUT )
+   INT handle
+   BOOL ret
+   
+   IF VARSTATE("handle") <> #INITIALIZED THEN
+      RETURN
+   ENDIF
+   IF (handle > 0) THEN
+      IF ( EXISTS_KRLMSG (handle) ) THEN 
+         ret = CLEAR_KRLMSG(handle)
+      ENDIF
+   
+      handle = 0
+   ENDIF
+END
+;
+; ------------------ TIMER FUNCTIONALITY ------------------
+;
+; 
+; Get current time.
+;
+GLOBAL DEFFCT INT ARTTimerGetTime()
+   DECL INT curTime
+   
+   CONTINUE
+   curTime = $ROB_TIMER
+   IF curTime == 0 THEN 
+      RETURN 1
+   ENDIF
+   
+   RETURN curTime
+ENDFCT
+; 
+; Timer check if time has elapsed.
+;
+GLOBAL DEFFCT BOOL ARTTimerIsTimePassed( timer:IN, timeSpan:IN, timeOut:IN )
+   DECL INT timer, timeSpan, curTime, timeOut, deltaTime
+   
+   IF VARSTATE( "timeOut" ) <> #INITIALIZED THEN
+      timeOut= 2147483647
+   ENDIF
+   
+   IF timer > 0 THEN
+      CONTINUE
+      curTime = $ROB_TIMER
+      IF timer < curTime THEN
+         deltaTime = curTime - timer
+         RETURN (deltaTime > timeSpan) AND (deltaTime <= timeOut)
+      ELSE ;exceptions check
+         IF timer == curTime THEN
+            RETURN FALSE
+         ELSE
+            timer = timer - 2147483647
+         ENDIF
+      ENDIF
+   ENDIF
+
+   RETURN FALSE   
+ENDFCT
+; 
+; How many time passed.
+;
+GLOBAL DEFFCT INT ARTTimerTimePassed( timer:IN)
+   DECL INT timer, curTime, deltaTime
+
+   CONTINUE
+   curTime = $ROB_TIMER
+   IF timer > curTime THEN
+      timer = timer - 2147483647
+   ENDIF
+   
+   deltaTime = curTime - timer
+
+   RETURN deltaTime
+ENDFCT

@@ -1,0 +1,286 @@
+&ACCESS RVO2
+&REL 39
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEF art_pallet_conv ( )
+END
+; 
+; Conveyors init.
+;
+GLOBAL DEF ARTConveyorsInitialize();
+   DECL INT conv_num
+   FOR conv_num = 1 TO 9
+      ART_pal_conveyors[conv_num].state = #CONV_STOP
+      ART_pal_conveyors[conv_num].object_out = FALSE
+      ART_pal_conveyors[conv_num].error_state = #NORMAL
+      ARTHMIClearMessage(ART_pal_conveyors[conv_num].m_FC_error)     
+      ART_pal_conveyors[conv_num].bagDisableTime = 0
+   ENDFOR
+   ARTHMIClearMessage(ART_lifts[1].m_lift_error)
+   ARTHMIClearMessage(ART_lifts[2].m_lift_error)
+   ART_lifts[1].error_state = #NORMAL
+   ART_lifts[2].error_state = #NORMAL
+END
+; 
+; Conveyors SPS.
+;
+GLOBAL DEF ARTConveyorsDoSPS()
+   DECL INT line_num
+   DECL INT conv_num
+   ; Var binding.
+   doConveyor1Run = ART_pal_conveyors[1].doRun
+   doConveyor2Run = ART_pal_conveyors[2].doRun
+   doConveyor3Run = ART_pal_conveyors[3].doRun
+   doConveyor4Run = ART_pal_conveyors[4].doRun
+   doConveyor5Run = ART_pal_conveyors[5].doRun
+   doConveyor6Run = ART_pal_conveyors[6].doRun
+   doConveyor7Run = ART_pal_conveyors[7].doRun
+   doConveyor8Run = ART_pal_conveyors[6].doRun
+   doConveyor9Run = ART_pal_conveyors[7].doRun
+   doConveyor2Reverse = ART_pal_conveyors[2].doReverse
+   doConveyor3Reverse = ART_pal_conveyors[3].doReverse
+   doConveyor6Reverse = ART_pal_conveyors[6].doReverse
+   doConveyor7Reverse = ART_pal_conveyors[7].doReverse
+   doConveyor8Reverse = ART_pal_conveyors[6].doReverse
+   doConveyor9Reverse = ART_pal_conveyors[7].doReverse
+   ART_HMI_Button_Pulse(ART_lifts[1].go_up,doConveyor6Up)
+   ART_HMI_Button_Pulse(ART_lifts[2].go_up,doConveyor7Up)
+   ART_HMI_Button_Pulse(ART_lifts[1].go_down,doConveyor6Down)
+   ART_HMI_Button_Pulse(ART_lifts[2].go_down,doConveyor7Down)
+   ;ART_pal_conveyors[1].in_sensor = diConveyor1In;
+   ART_pal_conveyors[2].in_sensor = diConveyor1Out;
+   ART_pal_conveyors[3].in_sensor = diConveyor2Out;
+   ;ART_pal_conveyors[4].in_sensor = diWrapperOutRequest;
+   ART_pal_conveyors[5].in_sensor = diConveyor4Out; x
+   ART_pal_conveyors[6].in_sensor = diConveyor2Out; x
+   ART_pal_conveyors[7].in_sensor = diConveyor3Out; x
+   ;ART_pal_conveyors[8].in_sensor = diConveyor8In;
+   ;ART_pal_conveyors[9].in_sensor = diConveyor9In;
+   ART_pal_conveyors[1].out_sensor = diConveyor1Out;
+   ART_pal_conveyors[2].out_sensor = diConveyor2Out;
+   ART_pal_conveyors[3].out_sensor = diConveyor3Out;
+   ART_pal_conveyors[4].out_sensor = diConveyor4Out;
+   ART_pal_conveyors[5].out_sensor = diConveyor5Out;
+   ART_pal_conveyors[6].out_sensor = diConveyor8Out;
+   ART_pal_conveyors[7].out_sensor = diConveyor9Out;
+   ;ART_pal_conveyors[8].out_sensor = diConveyor8Out;
+   ;ART_pal_conveyors[9].out_sensor = diConveyor9Out;
+   ART_pal_conveyors[1].diError = diConveyor1Error
+   ART_pal_conveyors[2].diError = diConveyor2Error
+   ART_pal_conveyors[3].diError = diConveyor3Error
+   ART_pal_conveyors[4].diError = diConveyor4Error
+   ART_pal_conveyors[5].diError = diConveyor5Error
+   ART_pal_conveyors[6].diError = diConveyor6Error
+   ART_pal_conveyors[7].diError = diConveyor7Error
+   ART_pal_conveyors[8].diError = diConveyor8Error
+   ART_pal_conveyors[9].diError = diConveyor9Error
+   ART_lifts[1].in_top = diConveyor6Top
+   ART_lifts[2].in_top = diConveyor7Top
+   ART_lifts[1].in_bottom = diConveyor6Bottom
+   ART_lifts[2].in_bottom = diConveyor7Bottom
+
+   ART_pal_conveyors[1].overflow_if = ART_pal_conveyors[1].out_sensor AND ((ART_pal_conveyors[2].state == #CONV_OVERFLOW) OR (ART_pal_conveyors[2].error_state) OR (ART_pal_conveyors[6].state == #CONV_RUN) OR (ART_pal_conveyors[6].error_state))
+   ART_pal_conveyors[2].overflow_if = ART_pal_conveyors[2].out_sensor AND ((ART_pal_conveyors[3].state == #CONV_OVERFLOW) OR (ART_pal_conveyors[3].error_state) OR (ART_pal_conveyors[7].state == #CONV_RUN) OR (ART_pal_conveyors[7].error_state))
+   ART_pal_conveyors[3].overflow_if = ART_pal_conveyors[3].out_sensor AND NOT diWrapperInPermit;((ART_wrapper[1].state == #WRAP_BUSY) OR (ART_wrapper[1].state == #WRAP_ERROR))
+   ART_pal_conveyors[4].overflow_if = ART_pal_conveyors[4].out_sensor AND ((ART_pal_conveyors[5].state == #CONV_OVERFLOW) OR (ART_pal_conveyors[5].error_state) OR (ART_pal_conveyors[5].state == #CONV_OVERFLOW))
+   ART_pal_conveyors[5].overflow_if = ART_pal_conveyors[5].out_sensor
+   ART_pal_conveyors[6].overflow_if = ART_pal_conveyors[6].out_sensor AND ((ART_pal_conveyors[2].state == #CONV_RUN) OR (ART_pal_conveyors[2].error_state) OR (ART_pal_conveyors[6].error_state) OR ART_pal_conveyors[8].error_state);ART_pal_conveyors[6].out_sensor AND ((ART_pal_conveyors[8].error_state))
+   ART_pal_conveyors[7].overflow_if = ART_pal_conveyors[7].out_sensor AND ((ART_pal_conveyors[3].state == #CONV_RUN) OR (ART_pal_conveyors[3].error_state) OR (ART_pal_conveyors[7].error_state) OR ART_pal_conveyors[9].error_state);ART_pal_conveyors[7].out_sensor AND ((ART_pal_conveyors[9].error_state))
+   ART_pal_conveyors[8].overflow_if = FALSE;ART_pal_conveyors[8].out_sensor AND ((ART_pal_conveyors[2].state == #CONV_RUN) OR (ART_pal_conveyors[2].error_state) OR (ART_pal_conveyors[6].error_state))
+   ART_pal_conveyors[9].overflow_if = FALSE;ART_pal_conveyors[9].out_sensor AND ((ART_pal_conveyors[3].state == #CONV_RUN) OR (ART_pal_conveyors[3].error_state) OR (ART_pal_conveyors[7].error_state))
+   ;
+   ; Common logic.
+   ;
+   FOR conv_num = 1 TO 9
+      IF ARTHMIIsResetPushed() THEN
+         ART_pal_conveyors[conv_num].error_state = #NORMAL
+      ENDIF
+      ;IF ARTHMIIsStartPushed() THEN
+         ;ART_pal_conveyors[conv_num].stop_state = FALSE
+      ;ENDIF
+      ;IF ARTHMIIsStopPushed() THEN
+      ;   ART_pal_conveyors[conv_num].stop_state = TRUE
+      ;ENDIF
+      ;
+      ; OVERFLOW state.
+      ;
+      IF (ART_pal_conveyors[conv_num].state == #CONV_RUN) AND ART_pal_conveyors[conv_num].overflow_if THEN
+         ART_pal_conveyors[conv_num].state = #CONV_OVERFLOW
+      ENDIF
+      ; Conveyor run after overflow.
+      IF (ART_pal_conveyors[conv_num].state == #CONV_OVERFLOW) AND NOT ART_pal_conveyors[conv_num].overflow_if THEN
+         ART_pal_conveyors[conv_num].state = #CONV_RUN
+      ENDIF
+      ;
+      ; ERROR state.
+      ;
+      IF (ART_pal_conveyors[conv_num].diError == TRUE) THEN ; OR (ARTSystemState == #ARTSYS_STATE_ERROR) AND NOT (ART_in_conveyors[conv_num].error_state)
+         ART_pal_conveyors[conv_num].error_state = #ERROR
+         ARTHMISetMessage(ART_pal_conveyors[conv_num].m_FC_error,TRUE,"ARTConveyors", "CONV_FC_ERROR")
+      ELSE
+         ARTHMIClearMessage(ART_pal_conveyors[conv_num].m_FC_error)
+      ENDIF
+      ; 
+      ; External stop.
+      ;
+      IF (ART_pal_conveyors[conv_num].error_state == #ERROR) OR (ARTSystemState == #ARTSYS_STATE_CRITICAL) OR (ARTSystemState == #ARTSYS_STATE_STOPPED) THEN ; OR (ARTSystemState == #ARTSYS_STATE_CRITICAL)
+         ART_pal_conveyors[conv_num].stop_state = TRUE
+      ELSE
+         ART_pal_conveyors[conv_num].stop_state = FALSE
+      ENDIF
+      ;
+      ; MOTION control.
+      ;
+      IF (ART_pal_conveyors[conv_num].state == #CONV_RUN) THEN
+         IF NOT ART_pal_conveyors[conv_num].stop_state THEN
+            ART_pal_conveyors[conv_num].doRun = TRUE
+            ART_pal_conveyors[conv_num].doReverse = FALSE
+         ELSE
+            ART_pal_conveyors[conv_num].doRun = FALSE
+         ENDIF
+      ENDIF
+      IF (ART_pal_conveyors[conv_num].state == #CONV_REV) THEN
+         IF NOT ART_pal_conveyors[conv_num].stop_state THEN
+            ART_pal_conveyors[conv_num].doReverse = TRUE
+            ART_pal_conveyors[conv_num].doRun = FALSE
+         ELSE
+            ART_pal_conveyors[conv_num].doReverse = FALSE
+         ENDIF
+      ENDIF
+      IF (ART_pal_conveyors[conv_num].state == #CONV_OVERFLOW) OR (ART_pal_conveyors[conv_num].state == #CONV_STOP)  THEN
+         ART_pal_conveyors[conv_num].doRun = FALSE
+         ART_pal_conveyors[conv_num].doReverse = FALSE
+      ENDIF
+
+   ENDFOR
+   ;
+   ; First conveyor.
+   ;
+   IF ART_dispenser[1].di_ready_take THEN;(ART_dispenser[1].State == #DIS_READY) THEN
+      ART_pal_conveyors[1].state = #CONV_RUN
+   ENDIF
+   ; In out_sensor moment
+   IF ART_pal_conveyors[1].out_sensor THEN
+      ART_pal_conveyors[1].bagDisableTime = ARTTimerGetTime()
+   ENDIF
+   
+   IF ARTTimerIsTimePassed(ART_pal_conveyors[1].bagDisableTime, ART_pal_conveyors[1].PASS_TIME) THEN
+      ART_pal_conveyors[1].bagDisableTime = 0;
+      ART_pal_conveyors[1].state = #CONV_STOP
+      ARTDispenserConfirm()
+   ENDIF
+   ;
+   ; 4 conveyor.
+   ;
+   IF diWrapperOutRequest AND NOT (ART_pal_conveyors[4].state == #CONV_OVERFLOW) THEN
+      ART_pal_conveyors[4].state = #CONV_RUN
+      ARTBarrierMute()
+   ENDIF
+   ; In out_sensor moment
+   IF ART_pal_conveyors[4].out_sensor THEN
+      ART_pal_conveyors[4].bagDisableTime = ARTTimerGetTime()
+   ENDIF
+   IF ARTTimerIsTimePassed(ART_pal_conveyors[4].bagDisableTime, ART_pal_conveyors[4].PASS_TIME) THEN
+      ART_pal_conveyors[4].bagDisableTime = 0;
+      ART_pal_conveyors[4].state = #CONV_STOP
+      ARTWrapperConfirm()
+      ARTBarrierUnMute()
+   ENDIF
+   ;
+   ; 5 conveyor.
+   ;
+   IF ART_pal_conveyors[5].in_sensor THEN
+      ART_pal_conveyors[5].state = #CONV_RUN
+   ENDIF
+   ; Product on out_sensor
+   IF ART_pal_conveyors[5].out_sensor THEN
+      ART_pal_conveyors[5].object_out = FALSE
+      ART_pal_conveyors[5].state = #CONV_STOP
+      ARTHMISetMessage(m_pallet_ready, TRUE, "ARTConveyors", "PALLET_READY")
+      ART_pal_conveyors[5].error_state = #WARNING
+   ELSE
+      ARTHMIClearMessage(m_pallet_ready)
+   ENDIF
+   IF m_pallet_ready > 0 THEN
+      ARTSystemSetState(#ARTSYS_STATE_WARNING)
+   ENDIF
+   ;
+   ;
+   ;
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      IF ARTHMIIsResetPushed() THEN
+         ART_lifts[line_num].error_state = #NORMAL
+      ENDIF
+      ;
+      ; 2,3 conveyor.
+      ;
+      IF ART_pal_conveyors[line_num + 1].in_sensor THEN
+         ART_pal_conveyors[line_num + 1].state = #CONV_RUN
+      ENDIF
+      
+      IF (ART_place_point[line_num,1].state == #WA_IN) THEN
+         IF ART_pal_conveyors[line_num + 1].out_sensor THEN
+            ART_pal_conveyors[line_num + 1].state = #CONV_STOP
+         ENDIF
+      ELSE
+         IF ART_pal_conveyors[line_num + 1].out_sensor THEN
+            ART_pal_conveyors[line_num + 1].bagDisableTime = ARTTimerGetTime()
+            ART_pal_conveyors[line_num + 1].state = #CONV_RUN
+         ENDIF
+      ENDIF 
+         
+      IF ARTTimerIsTimePassed(ART_pal_conveyors[line_num + 1].bagDisableTime, ART_pal_conveyors[line_num + 1].PASS_TIME) THEN
+         ART_pal_conveyors[line_num + 1].bagDisableTime = 0;
+         ART_pal_conveyors[line_num + 1].state = #CONV_STOP
+      ENDIF
+      ;
+      ; 6,7 conveyor
+      ;
+      IF (ART_place_point[line_num,1].state == #WA_IN) THEN
+         IF ART_pal_conveyors[line_num + 5].in_sensor AND (ART_pal_conveyors[line_num + 1].state == #CONV_STOP) THEN
+            ART_pal_conveyors[line_num + 5].state = #CONV_RUN
+            ART_lifts[line_num].go_up = TRUE
+            ART_lifts[line_num].lift_time = ARTTimerGetTime()          
+         ENDIF
+         ; In out_sensor moment
+         IF ART_pal_conveyors[line_num + 5].out_sensor THEN
+            ART_pal_conveyors[line_num + 5].state = #CONV_STOP
+            ART_lifts[line_num].go_down = TRUE
+            ART_lifts[line_num].lift_time = ARTTimerGetTime()            
+            ;ART_WA_pallet_in(line_num, 1)
+         ENDIF
+      ENDIF
+      IF (ART_place_point[line_num,1].state == #WA_OUT) THEN 
+         IF ART_pal_conveyors[line_num + 5].out_sensor AND (ART_pal_conveyors[line_num + 1].state == #CONV_STOP) THEN
+            ART_pal_conveyors[line_num + 5].state = #CONV_REV
+            ART_lifts[line_num].go_up = TRUE
+            ART_lifts[line_num].lift_time = ARTTimerGetTime()
+         ENDIF
+         ; In out_sensor moment
+         IF ART_pal_conveyors[line_num + 5].in_sensor THEN
+            ART_pal_conveyors[line_num + 5].state = #CONV_STOP
+            ART_PP_pallet_out(line_num, 1)
+            ART_lifts[line_num].go_down = TRUE
+            ART_lifts[line_num].lift_time = ARTTimerGetTime()
+         ENDIF
+      ENDIF
+      ; Lift control  
+      IF ART_lifts[line_num].in_top THEN
+         ;ART_pal_conveyors[line_num + 5].state = #CONV_RUN
+         ART_lifts[line_num].lift_time = 0
+      ENDIF
+      IF ART_lifts[line_num].in_bottom THEN
+         ;ART_pal_conveyors[line_num + 5].state = #CONV_STOP
+         ART_lifts[line_num].lift_time = 0
+      ENDIF
+      IF ARTTimerIsTimePassed(ART_lifts[line_num].lift_time, DEF_LIFT_TIME) THEN
+         ARTHMISetMessage(ART_lifts[line_num].m_lift_error,TRUE,"ARTConveyors", "CONV_LIFT_ERROR")
+         ART_lifts[line_num].error_state = #ERROR
+         ;ART_pal_conveyors[line_num + 5].error_state = TRUE
+      ENDIF
+
+   ENDFOR   
+   
+
+END

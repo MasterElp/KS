@@ -1,0 +1,33 @@
+&ACCESS RVO2
+&REL 57
+&PARAM EDITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\TP\ART
+DEFDAT  art_placepoint PUBLIC
+GLOBAL ENUM ART_PP_STATES WA_BUSY,WA_FULL,WA_READY,WA_IN,WA_OUT,WA_SERVICE,WA_OPERATOR,WA_GIVE_WAIT
+GLOBAL STRUC PLACE_POINT ART_PP_STATES state, ART_DEVICE_STATE error_state,BOOL isFramePalletEvro,BOOL do_safety_mute,BOOL do_blink,BOOL di_barrier_pass,BOOL di_ready_button,BOOL di_FramePalletIn,BOOL di_FrameHasBags,BOOL isServiceModeOff,INT buttonPressTime,BOOL ready_signal,BOOL ready_canceled,INT m_h_wrong_pallet,INT m_h_barrier_pass,INT m_handle_ready_conf,INT m_handle_not_ready,INT m_h_service_mode,BOOL do_ready_button_lamp,BOOL passed,BOOL pallet_out,INT m_pallet_out
+DECL INT DEF_WA_COUNT=1
+DECL GLOBAL PLACE_POINT ART_place_point[2,2]
+;DECL GLOBAL INT ART_WA_useWorkArea[2]
+;DECL GLOBAL INT ART_WA_new_scheme[2]
+; Chain 1
+ART_place_point[1,1]={state #WA_BUSY,error_state #NORMAL,isFramePalletEvro TRUE,do_safety_mute TRUE,do_blink FALSE,di_barrier_pass FALSE,di_ready_button FALSE,di_FramePalletIn TRUE,di_FrameHasBags FALSE,isServiceModeOff TRUE,buttonPressTime 0,ready_signal FALSE,ready_canceled FALSE,m_h_wrong_pallet 0,m_h_barrier_pass 0,m_handle_ready_conf 0,m_handle_not_ready 0,m_h_service_mode 0,do_ready_button_lamp FALSE,passed FALSE,pallet_out FALSE,m_pallet_out 0}
+ART_place_point[1,2]={state #WA_BUSY,error_state #NORMAL,isFramePalletEvro FALSE,do_safety_mute FALSE,do_blink FALSE,di_barrier_pass FALSE,di_ready_button FALSE,di_FramePalletIn FALSE,di_FrameHasBags FALSE,isServiceModeOff TRUE,buttonPressTime 0,ready_signal FALSE,ready_canceled FALSE,m_h_wrong_pallet 0,m_h_barrier_pass 0,m_handle_ready_conf 0,m_handle_not_ready 0,m_h_service_mode 0,do_ready_button_lamp TRUE,passed FALSE,pallet_out FALSE,m_pallet_out 0}
+;ART_WA_useWorkArea[1]=0
+;ART_WA_new_scheme[1]=1
+; Chain 2
+;ART_work_areas[2,1]={state #WA_BUSY,isFramePalletEvro TRUE,do_safety_mute FALSE,do_blink FALSE,di_barrier_pass FALSE,di_ready_button FALSE,di_FramePalletIn TRUE,di_FrameHasBags TRUE,isServiceModeOff TRUE,buttonPressTime 0,ready_signal FALSE,ready_canceled FALSE,m_h_wrong_pallet 0,m_h_barrier_pass 0,m_handle_ready_conf 0,m_handle_not_ready 0,m_h_service_mode 0,do_ready_button_lamp TRUE,passed FALSE,pallet_out FALSE,m_pallet_out 0}
+;ART_work_areas[2,2]={state #WA_OPERATOR,isFramePalletEvro FALSE,do_safety_mute TRUE,do_blink FALSE,di_barrier_pass FALSE,di_ready_button FALSE,di_FramePalletIn FALSE,di_FrameHasBags FALSE,isServiceModeOff TRUE,buttonPressTime 0,ready_signal FALSE,ready_canceled FALSE,m_h_wrong_pallet 0,m_h_barrier_pass 0,m_handle_ready_conf 0,m_handle_not_ready 0,m_h_service_mode 0,do_ready_button_lamp FALSE,passed FALSE,pallet_out FALSE,m_pallet_out 0}
+;ART_WA_useWorkArea[2]=0
+;ART_WA_new_scheme[2]=1
+
+DECL CONST INT BUTTON_PRESS_TIME=1000
+; Log
+DECL INT ART_WA_OperWaitTimer=644977708
+DECL GLOBAL INT ART_WA_OperWaitTime=200
+DECL GLOBAL BOOL ART_WA_OperWaitTimeF=TRUE
+DECL INT ART_WA_PalletChgTimer=0
+DECL GLOBAL INT ART_WA_PalletChgTime=227
+DECL GLOBAL BOOL ART_WA_PalletChgTimeF=TRUE
+
+ENDDAT

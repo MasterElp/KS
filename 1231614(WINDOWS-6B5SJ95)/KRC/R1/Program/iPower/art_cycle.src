@@ -1,0 +1,274 @@
+&ACCESS RVO1
+&REL 54
+&PARAM DISKPATH = KRC:\R1\Program\UGK
+DEF art_cycle()
+   DECL INT line_num
+   
+   ; Select ready work area.
+   ART_PP_Select()
+   
+   ; Reset line work areas, when scheme changed.
+   ART_PP_sheme_changed()
+   
+   ; Pallet filling.
+   line_num = ART_line_Select()
+   
+   IF (line_num == 1) OR (line_num == 2) THEN
+      ; First layer sheet.
+      IF (ART_line[line_num].current_bag == 0) THEN
+         move_get_sheet(1)         
+         move_put_sheet(line_num)
+      ENDIF
+      ; Product.
+      ART_line_calc_next(line_num)
+      move_get(line_num)
+      ARTGripperGrip()
+      move_put(line_num, ART_line[line_num].scheme_number)  
+      
+      ARTStatProductCycle()
+      ART_line_last_num = line_num
+      ; Layer sheet.
+      IF (ART_line[line_num].isLayerDone) THEN
+         move_get_sheet(2)
+         move_put_sheet(line_num)
+      ENDIF
+   ELSE
+      art_move_center()
+   ENDIF
+   
+   ; Pallet full.
+   FOR line_num = 1 TO DEF_LINE_COUNT
+      IF ART_line[line_num].isPalletDone THEN
+         ART_PP_Full(line_num)
+         ARTStatPalletCycle(line_num)
+      ENDIF
+   ENDFOR
+END
+;
+; Put product on pallet.
+;
+DEF move_put(line_num:IN, scheme:IN)
+   DECL INT line_num
+   DECL INT scheme
+   DECL INT wa_base
+   
+   move_pp_after(line_num)
+   ART_move_center()
+
+   wa_base = line_num + 2
+   $BWDSTART=FALSE
+   SWITCH wa_base
+      CASE 3  
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 400.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT={TOOL_NO 0,BASE_NO 3,IPO_FRAME #BASE,POINT2[] " ",TQ_STATE FALSE}
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 80, A2 -72,A3 60} C_DIS
+      CASE 4
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 400.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT={TOOL_NO 0,BASE_NO 4,IPO_FRAME #BASE,POINT2[] " ",TQ_STATE FALSE}
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 30, A2 -110,A3 86,A6 -60} C_DIS
+   ENDSWITCH
+   SWITCH line_num
+      CASE 1
+         ;PTP
+         SWITCH scheme
+            CASE 1
+               ;art_chah_ln1_5l(wa_base, ART_line[line_num].current_bag)
+            CASE 2
+               ;art_chah_ln1_10l(wa_base, ART_line[line_num].current_bag)
+            DEFAULT
+               ARTControlMotionCmd = #ARTMotionNone
+         ENDSWITCH
+      CASE 2
+         ;PTP
+         SWITCH scheme
+            CASE 1
+               ;art_chah_ln2_5l(wa_base, ART_line[line_num].current_bag)
+            CASE 2
+               ;art_chah_ln2_10l(wa_base, ART_line[line_num].current_bag)
+            DEFAULT
+               ARTControlMotionCmd = #ARTMotionNone
+         ENDSWITCH
+   ENDSWITCH
+   
+   ART_move_center()
+END
+;
+; Product getting.
+;
+DEF move_get(line_num: IN)
+   DECL INT line_num
+   ;ARTForkClose()
+   SWITCH line_num
+      CASE 1
+         ;FOLD PTP spo1 CONT Vel=100 % PDAT1 Tool[1]:calibr Base[3]:wa1;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:spo1, 3:C_DIS, 5:100, 7:PDAT1
+         $BWDSTART=FALSE
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 100.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT=Fspo1
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 80, A2 -100,A3 80,A6 0} C_DIS
+         ;ENDFOLD
+      CASE 2
+         ;FOLD PTP spo2 CONT Vel=100 % PDAT3 Tool[0] Base[2]:pick_p2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:spo2, 3:C_DIS, 5:100, 7:PDAT3
+         $BWDSTART=FALSE
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 100.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT=Fspo2
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 -90, A2 -81,A3 64,A6 -180} C_DIS
+         ;ENDFOLD
+   ENDSWITCH
+   
+   ART_move_pre_pp(line_num)
+   ART_move_pick_point(line_num)
+END
+;
+; Put sheet on pallet.
+;
+DEF move_put_sheet(line_num:IN)
+   DECL INT line_num
+   DECL INT wa_base
+   
+   ART_move_center()
+
+   wa_base = line_num + 2
+   $BWDSTART=FALSE
+   SWITCH wa_base
+      CASE 3  
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 400.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT={TOOL_NO 0,BASE_NO 3,IPO_FRAME #BASE,POINT2[] " ",TQ_STATE FALSE}
+         BAS(#PTP_PARAMS,100)
+         ;PTP {A1 80, A2 -72,A3 60} C_DIS
+      CASE 4
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 400.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT={TOOL_NO 0,BASE_NO 4,IPO_FRAME #BASE,POINT2[] " ",TQ_STATE FALSE}
+         BAS(#PTP_PARAMS,100)
+         ;PTP {A1 30, A2 -110,A3 86,A6 -60} C_DIS
+   ENDSWITCH
+   ;PTP
+   ARTGripVacuumRelease()
+   ;PTP
+   ART_move_center()
+END
+;
+; Sheet getting.
+;
+DEF move_get_sheet(stack_num:IN)
+   DECL INT stack_num
+   INTERRUPT DECL 21 WHEN $MEAS_PULSE[5]==FALSE DO StopMoving( )
+   INTERRUPT OFF 21
+   ARTStackMuteOFF(stack_num)
+   $PAL_MODE = FALSE
+
+   SWITCH stack_num
+      CASE 1
+         ;FOLD PTP spo1 CONT Vel=100 % PDAT1 Tool[1]:calibr Base[3]:wa1;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:spo1, 3:C_DIS, 5:100, 7:PDAT1
+         $BWDSTART=FALSE
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 100.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT=Fspo1
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 80, A2 -100,A3 80,A6 0} C_DIS
+         ;ENDFOLD
+         ;FOLD PTP sheet1 CONT Vel=100 % PDAT4 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet1, 3:C_DIS, 5:100, 7:PDAT4
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT4
+         FDAT_ACT=Fsheet1
+         BAS(#PTP_PARAMS,100)
+         PTP {X 0,Y 0,Z 800,A 0,B 0,C 0}:Xsheet1 C_DIS
+         ;ENDFOLD
+
+         INTERRUPT ON 21
+         sheets_stack_scan(stack_num)
+         INTERRUPT OFF 21
+
+         ARTGripVacuumGrip()
+         ;FOLD PTP sheet1 CONT Vel=100 % PDAT4 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet1, 3:C_DIS, 5:100, 7:PDAT4
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT4
+         FDAT_ACT=Fsheet1
+         BAS(#PTP_PARAMS,100)
+         LIN {X 0,Y 0,Z 800,A 0,B 0,C 0}:Xsheet1 C_DIS C_DIS
+         ;ENDFOLD
+      CASE 2
+         INTERRUPT DECL 21 WHEN $MEAS_PULSE[5]==FALSE DO StopMoving( )
+         INTERRUPT OFF 21
+         $PAL_MODE = FALSE
+      
+         ;FOLD PTP spo1 CONT Vel=100 % PDAT1 Tool[1]:calibr Base[3]:wa1;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:spo1, 3:C_DIS, 5:100, 7:PDAT1
+         $BWDSTART=FALSE
+         PDAT_ACT={VEL 100.000,ACC 100.000,APO_DIST 100.000,APO_MODE #CDIS,GEAR_JERK 50.0000,EXAX_IGN 0}
+         FDAT_ACT=Fspo1
+         BAS(#PTP_PARAMS,100)
+         PTP {A1 80, A2 -100,A3 80,A6 0} C_DIS
+         ;ENDFOLD
+
+         ;FOLD PTP sheet2 CONT Vel=100 % PDAT6 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet2, 3:C_DIS, 5:100, 7:PDAT6
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT6
+         FDAT_ACT=Fsheet2
+         BAS(#PTP_PARAMS,100)
+         PTP {X 0,Y 0,Z 800,A 0,B 0,C 0}:Xsheet2 C_DIS
+         ;ENDFOLD
+         INTERRUPT ON 21
+         sheets_stack_scan(stack_num)
+         INTERRUPT OFF 21
+         ;FOLD PTP sheet2 CONT Vel=100 % PDAT6 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet2, 3:C_DIS, 5:100, 7:PDAT6
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT6
+         FDAT_ACT=Fsheet2
+         BAS(#PTP_PARAMS,100)
+         PTP {X 0,Y 0,Z 800,A 0,B 0,C 0}:Xsheet2 C_DIS
+         ;ENDFOLD
+   ENDSWITCH
+   ARTStackMuteON(stack_num)
+END
+;
+;
+;
+DEF sheets_stack_scan(stack_num: IN)
+   DECL INT stack_num
+   
+   SWITCH stack_num
+      CASE 1
+         ARTStackLowReset(stack_num)
+         ;FOLD PTP sheet1 CONT Vel=100 % PDAT4 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet1, 3:C_DIS, 5:100, 7:PDAT4
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT4
+         FDAT_ACT=Fsheet1
+         BAS(#PTP_PARAMS,100)
+         PTP {X 0,Y 0,Z 100,A 0,B 0,C 0}:Xsheet1 C_DIS
+         ;ENDFOLD
+         ARTStackLow(stack_num)
+         ;FOLD PTP sheet1 CONT Vel=100 % PDAT4 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet1, 3:C_DIS, 5:100, 7:PDAT4
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT4
+         FDAT_ACT=Fsheet1
+         BAS(#PTP_PARAMS,100)
+         PTP Xsheet1 C_DIS
+         ;ENDFOLD
+      CASE 2
+         ARTStackLowReset(stack_num)
+         ;FOLD PTP sheet2 CONT Vel=100 % PDAT6 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet2, 3:C_DIS, 5:100, 7:PDAT6
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT6
+         FDAT_ACT=Fsheet2
+         BAS(#PTP_PARAMS,100)
+         PTP {X 0,Y 0,Z 100,A 0,B 0,C 0}:Xsheet2 C_DIS
+         ;ENDFOLD
+         ARTStackLow(stack_num)
+         ;FOLD PTP sheet2 CONT Vel=100 % PDAT6 Tool[0] Base[2]:pp2;%{PE}%R 8.3.44,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:sheet2, 3:C_DIS, 5:100, 7:PDAT6
+         $BWDSTART=FALSE
+         PDAT_ACT=PPDAT6
+         FDAT_ACT=Fsheet2
+         BAS(#PTP_PARAMS,100)
+         PTP Xsheet2 C_DIS
+         ;ENDFOLD
+   ENDSWITCH
+END
+;
+;
+;
+DEF StopMoving()
+   BRAKE
+   RESUME
+END
